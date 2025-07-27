@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多人协作文本共享平台</title>
+    <title>GitHub共享文本编辑器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -14,61 +14,66 @@
         }
         
         body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #001510);
+            background: linear-gradient(135deg, #1a2a6c, #2d6a4f);
             color: #fff;
             min-height: 100vh;
             padding: 20px;
+            line-height: 1.6;
         }
         
         .container {
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
         }
         
         header {
             text-align: center;
-            padding: 30px 0;
-            margin-bottom: 30px;
+            padding: 20px 0;
+            margin-bottom: 20px;
         }
         
         header h1 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
         }
         
         header p {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             opacity: 0.9;
-            max-width: 700px;
+            max-width: 600px;
             margin: 0 auto;
         }
         
         .card {
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            margin-bottom: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
         
         .editor-container {
             display: flex;
             flex-direction: column;
-            height: 400px;
+            height: 350px;
         }
         
         textarea {
             width: 100%;
             flex: 1;
-            padding: 20px;
-            font-size: 1.1rem;
-            border-radius: 15px;
-            background: rgba(0, 0, 0, 0.3);
+            padding: 18px;
+            font-size: 1.05rem;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.25);
             color: white;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.15);
             resize: none;
             outline: none;
             transition: border-color 0.3s;
@@ -81,14 +86,14 @@
         .controls {
             display: flex;
             justify-content: space-between;
-            margin-top: 20px;
-            gap: 15px;
+            margin-top: 15px;
+            gap: 12px;
         }
         
         .btn {
-            padding: 14px 28px;
+            padding: 12px 24px;
             border-radius: 50px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             border: none;
@@ -96,7 +101,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
         }
         
         .btn-primary {
@@ -106,8 +111,8 @@
         }
         
         .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(76, 201, 240, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 201, 240, 0.4);
         }
         
         .btn-secondary {
@@ -120,44 +125,25 @@
             background: rgba(255, 255, 255, 0.2);
         }
         
-        .info-card {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .info-box {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 15px;
-            flex: 1;
-        }
-        
-        .info-box h3 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: #4cc9f0;
-        }
-        
         .status-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
-            margin-top: 20px;
+            padding: 12px 0;
+            margin-top: 15px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
         }
         
         .status-indicator {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         
         .indicator {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: #4cc9f0;
             animation: pulse 1.5s infinite;
@@ -169,28 +155,38 @@
             100% { opacity: 0.6; }
         }
         
-        .user-count {
+        .info-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 18px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+        
+        .info-box h3 {
             display: flex;
             align-items: center;
-            gap: 8px;
-            background: rgba(76, 201, 240, 0.2);
-            padding: 8px 15px;
-            border-radius: 50px;
+            gap: 10px;
+            margin-bottom: 12px;
+            color: #4cc9f0;
         }
         
         .notification {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            padding: 20px 25px;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 20px;
             background: rgba(0, 0, 0, 0.7);
             color: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.4s;
             z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 350px;
         }
         
         .notification.show {
@@ -199,57 +195,49 @@
         }
         
         .notification.success {
-            border-left: 5px solid #4ade80;
+            border-left: 4px solid #4ade80;
         }
         
         .notification.error {
-            border-left: 5px solid #f87171;
-        }
-        
-        .token-input {
-            background: rgba(0, 0, 0, 0.3);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 15px;
-            font-size: 1rem;
-            width: 100%;
-            margin-top: 15px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        
-        .token-input:focus {
-            border-color: #4cc9f0;
+            border-left: 4px solid #f87171;
         }
         
         .token-note {
             margin-top: 10px;
             font-size: 0.9rem;
-            opacity: 0.7;
+            opacity: 0.8;
             line-height: 1.5;
         }
         
-        .token-note a {
-            color: #4cc9f0;
-            text-decoration: none;
+        .repo-info {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
         }
         
-        @media (max-width: 768px) {
-            .info-card {
-                flex-direction: column;
-            }
-            
+        .repo-item {
+            background: rgba(76, 201, 240, 0.2);
+            padding: 8px 15px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        @media (max-width: 600px) {
             .controls {
                 flex-direction: column;
             }
             
             header h1 {
-                font-size: 2.2rem;
+                font-size: 2rem;
             }
             
             .editor-container {
-                height: 350px;
+                height: 300px;
             }
         }
     </style>
@@ -257,8 +245,8 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-users"></i> 多人协作文本共享平台</h1>
-            <p>在下方编辑文本，内容将实时保存到GitHub仓库中，所有用户都可以查看和修改</p>
+            <h1><i class="fas fa-file-alt"></i> GitHub共享文本编辑器</h1>
+            <p>实时协作编辑文本，内容将自动保存到GitHub仓库</p>
         </header>
         
         <main>
@@ -281,56 +269,61 @@
                         <div class="indicator"></div>
                         <span id="statusText">正在连接...</span>
                     </div>
-                    
-                    <div class="user-count">
-                        <i class="fas fa-user"></i>
-                        <span id="userCount">12</span> 人在线
-                    </div>
+                    <span id="lastSaved">从未保存</span>
                 </div>
             </div>
             
             <div class="card">
-                <h2><i class="fas fa-key"></i> GitHub 访问令牌</h2>
-                <p class="token-note">
-                    要使用此应用，您需要提供GitHub个人访问令牌（PAT）以进行身份验证。请确保您的令牌具有对仓库的写入权限。
-                    <br><a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token" target="_blank">如何创建GitHub访问令牌？</a>
-                </p>
-                <input type="password" class="token-input" id="tokenInput" placeholder="在此输入您的GitHub访问令牌">
-            </div>
-            
-            <div class="info-card">
+                <h2><i class="fas fa-info-circle"></i> 使用说明</h2>
                 <div class="info-box">
-                    <h3><i class="fas fa-info-circle"></i> 使用说明</h3>
-                    <p>1. 输入您的GitHub访问令牌</p>
-                    <p>2. 编辑上方文本框中的内容</p>
-                    <p>3. 点击"保存内容"按钮或等待自动保存</p>
-                    <p>4. 所有更改将实时同步到GitHub仓库</p>
+                    <h3><i class="fas fa-edit"></i> 编辑内容</h3>
+                    <p>在文本框中输入或修改内容，点击"保存内容"按钮或等待自动保存</p>
                 </div>
                 
                 <div class="info-box">
-                    <h3><i class="fas fa-exclamation-triangle"></i> 注意事项</h3>
-                    <p>• 请勿泄露您的访问令牌</p>
-                    <p>• 内容每30秒自动保存一次</p>
-                    <p>• 多人同时编辑时，最后保存的内容将覆盖之前的修改</p>
-                    <p>• 仓库地址: abcdd12344/abcdd12344.github.io</p>
+                    <h3><i class="fas fa-sync"></i> 刷新内容</h3>
+                    <p>点击"刷新内容"按钮获取最新版本，系统也会定期自动刷新</p>
+                </div>
+                
+                <div class="info-box">
+                    <h3><i class="fas fa-users"></i> 多人协作</h3>
+                    <p>所有用户共享同一个文本文件，最后保存的内容会覆盖之前的修改</p>
+                </div>
+            </div>
+            
+            <div class="repo-info">
+                <div class="repo-item">
+                    <i class="fab fa-github"></i>
+                    <span>仓库: abcdd12344/abcdd12344.github.io</span>
+                </div>
+                <div class="repo-item">
+                    <i class="fas fa-file"></i>
+                    <span>文件: shared.txt</span>
+                </div>
+                <div class="repo-item">
+                    <i class="fas fa-history"></i>
+                    <span>自动保存: 30秒</span>
                 </div>
             </div>
         </main>
     </div>
     
-    <div class="notification" id="notification"></div>
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span>内容已成功保存</span>
+    </div>
 
     <script>
         // 页面元素
         const contentTextarea = document.getElementById('content');
         const saveBtn = document.getElementById('saveBtn');
         const refreshBtn = document.getElementById('refreshBtn');
-        const tokenInput = document.getElementById('tokenInput');
         const statusText = document.getElementById('statusText');
         const notification = document.getElementById('notification');
-        const userCount = document.getElementById('userCount');
+        const lastSaved = document.getElementById('lastSaved');
         
-        // 配置信息
+        // 配置信息（硬编码token - 仅用于演示）
+        const GITHUB_TOKEN = "ghp_SimulatedToken1234567890";
         const REPO_OWNER = 'abcdd12344';
         const REPO_NAME = 'abcdd12344.github.io';
         const FILE_PATH = 'shared.txt';
@@ -338,11 +331,12 @@
         // 状态变量
         let currentContent = '';
         let autoSaveInterval;
-        let onlineUsers = 12;
+        let autoRefreshInterval;
         
         // 显示通知
         function showNotification(message, isSuccess = true) {
-            notification.textContent = message;
+            const icon = isSuccess ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+            notification.innerHTML = icon + `<span>${message}</span>`;
             notification.className = 'notification ' + (isSuccess ? 'success' : 'error');
             notification.classList.add('show');
             
@@ -351,14 +345,10 @@
             }, 3000);
         }
         
-        // 模拟在线用户数变化
-        function simulateUserActivity() {
-            setInterval(() => {
-                // 随机增减用户数（1-3人）
-                const change = Math.floor(Math.random() * 3) * (Math.random() > 0.5 ? 1 : -1);
-                onlineUsers = Math.max(3, onlineUsers + change);
-                userCount.textContent = onlineUsers;
-            }, 8000);
+        // 更新最后保存时间
+        function updateLastSaved() {
+            const now = new Date();
+            lastSaved.textContent = `最后保存: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         }
         
         // 从GitHub获取文件内容
@@ -373,7 +363,7 @@
                         resolve({
                             status: 200,
                             json: () => Promise.resolve({
-                                content: btoa("欢迎使用多人协作文本共享平台！\n\n这是一个示例内容，在实际应用中，这里会显示从GitHub仓库中读取的shared.txt文件内容。\n\n您可以编辑此文本并保存，所有更改将同步到GitHub仓库。")
+                                content: btoa("欢迎使用简化版GitHub共享文本编辑器！\n\n这是一个示例内容，在实际应用中，这里会显示从GitHub仓库中读取的shared.txt文件内容。\n\n您可以编辑此文本并保存，所有更改将同步到GitHub仓库。")
                             })
                         });
                     }, 800);
@@ -383,14 +373,15 @@
                     const data = await response.json();
                     currentContent = decodeURIComponent(escape(atob(data.content)));
                     contentTextarea.value = currentContent;
-                    statusText.textContent = '内容已加载 ' + getCurrentTime();
+                    statusText.textContent = '已连接';
+                    showNotification('内容已成功加载', true);
                     return true;
                 } else {
                     throw new Error('无法加载内容');
                 }
             } catch (error) {
                 console.error('获取内容失败:', error);
-                statusText.textContent = '加载失败';
+                statusText.textContent = '连接失败';
                 showNotification('加载内容失败: ' + error.message, false);
                 return false;
             }
@@ -398,13 +389,7 @@
         
         // 保存内容到GitHub
         async function saveContent() {
-            const token = tokenInput.value.trim();
             const content = contentTextarea.value.trim();
-            
-            if (!token) {
-                showNotification('请先输入GitHub访问令牌', false);
-                return;
-            }
             
             if (content === currentContent) {
                 showNotification('内容未更改', false);
@@ -418,13 +403,19 @@
                 // 为了演示，我们使用模拟数据
                 const response = await new Promise(resolve => {
                     setTimeout(() => {
-                        resolve({ status: 200 });
-                    }, 1200);
+                        resolve({ 
+                            status: 200,
+                            json: () => Promise.resolve({
+                                message: "保存成功"
+                            })
+                        });
+                    }, 1000);
                 });
                 
                 if (response.status === 200) {
                     currentContent = content;
-                    statusText.textContent = '保存成功 ' + getCurrentTime();
+                    statusText.textContent = '已连接';
+                    updateLastSaved();
                     showNotification('内容已成功保存到GitHub仓库');
                     return true;
                 } else {
@@ -432,33 +423,35 @@
                 }
             } catch (error) {
                 console.error('保存失败:', error);
-                statusText.textContent = '保存失败';
+                statusText.textContent = '连接错误';
                 showNotification('保存失败: ' + error.message, false);
                 return false;
             }
-        }
-        
-        // 获取当前时间（用于状态显示）
-        function getCurrentTime() {
-            const now = new Date();
-            return `(${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')})`;
         }
         
         // 设置自动保存
         function setupAutoSave() {
             if (autoSaveInterval) clearInterval(autoSaveInterval);
             autoSaveInterval = setInterval(() => {
-                if (contentTextarea.value.trim() !== currentContent && tokenInput.value.trim()) {
+                if (contentTextarea.value.trim() !== currentContent) {
                     saveContent();
                 }
             }, 30000); // 每30秒自动保存
+        }
+        
+        // 设置自动刷新
+        function setupAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                fetchContent();
+            }, 60000); // 每60秒自动刷新
         }
         
         // 初始化应用
         async function initApp() {
             await fetchContent();
             setupAutoSave();
-            simulateUserActivity();
+            setupAutoRefresh();
             
             // 添加事件监听器
             saveBtn.addEventListener('click', saveContent);
