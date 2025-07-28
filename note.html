@@ -2,282 +2,94 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub共享文本编辑器</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>共享文本编辑器</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: #f5f5f5;
-            color: #333;
-            min-height: 100vh;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            padding: 20px 0;
-            margin-bottom: 20px;
-        }
-        
-        header h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        .editor-container {
-            display: flex;
-            flex-direction: column;
-            height: 300px;
-        }
-        
-        textarea {
-            width: 100%;
-            flex: 1;
-            padding: 15px;
-            font-size: 1rem;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            resize: none;
-            outline: none;
-        }
-        
-        textarea:focus {
-            border-color: #4cc9f0;
-            box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.2);
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            gap: 10px;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-size: 1rem;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background: #4cc9f0;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #3ab0d6;
-        }
-        
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-        
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #666;
-        }
-        
-        .notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 12px 16px;
-            background: #333;
-            color: white;
-            border-radius: 6px;
-            transform: translateY(100px);
-            opacity: 0;
-            transition: all 0.3s;
-            z-index: 1000;
-        }
-        
-        .notification.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #content { width: 100%; min-height: 200px; }
+        #saveBtn, #refreshBtn { margin-top: 10px; }
+        #status { margin-top: 10px; color: green; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1><i class="fas fa-file-alt"></i> 共享文本编辑器</h1>
-            <p>实时协作编辑文本，内容自动保存到GitHub</p>
-        </header>
-        
-        <main>
-            <div class="card">
-                <div class="editor-container">
-                    <textarea id="content" placeholder="在此输入共享内容..."></textarea>
-                    
-                    <div class="controls">
-                        <button class="btn btn-primary" id="saveBtn">
-                            <i class="fas fa-save"></i> 保存
-                        </button>
-                        <button class="btn btn-secondary" id="refreshBtn">
-                            <i class="fas fa-sync-alt"></i> 刷新
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="status-bar">
-                    <span id="statusText">正在连接...</span>
-                    <span id="lastSaved"></span>
-                </div>
-            </div>
-        </main>
-    </div>
-    
-    <div class="notification" id="notification"></div>
+    <h2>共享文本编辑器</h2>
+    <textarea id="content"></textarea><br>
+    <button id="saveBtn">保存内容</button>
+    <button id="refreshBtn">刷新内容</button>
+    <div id="status"></div>
 
     <script>
-        // 页面元素
-        const contentTextarea = document.getElementById('content');
-        const saveBtn = document.getElementById('saveBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const statusText = document.getElementById('statusText');
-        const notification = document.getElementById('notification');
-        const lastSaved = document.getElementById('lastSaved');
-        
-        // 支持Unicode的Base64编码
-        function encodeBase64(str) {
-            return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, 
-                function(match, p1) {
-                    return String.fromCharCode('0x' + p1);
-                }));
-        }
-        
-        // 支持Unicode的Base64解码
-        function decodeBase64(str) {
-            return decodeURIComponent(atob(str).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-        }
-        
-        // 显示通知
-        function showNotification(message, isSuccess = true) {
-            notification.textContent = message;
-            notification.className = 'notification ' + (isSuccess ? 'show' : 'show');
-            notification.style.backgroundColor = isSuccess ? '#4caf50' : '#f44336';
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-        
-        // 更新最后保存时间
-        function updateLastSaved() {
-            const now = new Date();
-            lastSaved.textContent = `最后保存: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        }
-        
-        // 从GitHub获取内容
-        async function fetchContent() {
-            statusText.textContent = '正在加载...';
-            
+        const repo = "abcdd12344/abcdd12344.github.io";
+        const filePath = "shared.txt";
+        const apiBase = "https://api.github.com/repos/" + repo + "/contents/" + filePath;
+
+        // 获取 shared.txt 的内容
+        async function loadContent() {
+            document.getElementById("status").textContent = "正在加载内容...";
             try {
-                // 模拟API调用
-                const response = await new Promise(resolve => {
-                    setTimeout(() => {
-                        resolve({
-                            status: 200,
-                            json: () => Promise.resolve({
-                                content: encodeBase64("欢迎使用共享文本编辑器！\n\n这是一个示例内容，实际应用中会从GitHub加载。")
-                            })
-                        });
-                    }, 800);
-                });
-                
-                if (response.status === 200) {
-                    const data = await response.json();
-                    contentTextarea.value = decodeBase64(data.content);
-                    statusText.textContent = '已连接';
-                    showNotification('内容加载成功', true);
+                const res = await fetch(apiBase, { cache: "no-store" });
+                if (res.ok) {
+                    const json = await res.json();
+                    const content = atob(json.content.replace(/\n/g, ''));
+                    document.getElementById("content").value = content;
+                    document.getElementById("status").textContent = "内容已加载。";
+                } else {
+                    document.getElementById("status").textContent = "未找到 shared.txt 文件。";
                 }
-            } catch (error) {
-                statusText.textContent = '连接失败';
-                showNotification('加载失败: ' + error.message, false);
+            } catch (err) {
+                document.getElementById("status").textContent = "加载失败：" + err;
             }
         }
-        
-        // 保存内容到GitHub
+
+        // 保存内容到 shared.txt
         async function saveContent() {
-            const content = contentTextarea.value.trim();
-            
-            if (!content) {
-                showNotification('内容不能为空', false);
-                return;
-            }
-            
-            statusText.textContent = '正在保存...';
-            
+            const text = document.getElementById("content").value;
+            // 用户输入 Github Token
+            const token = prompt("请输入您的 GitHub Token（需要 repo 权限）：");
+            if (!token) return;
+
+            document.getElementById("status").textContent = "正在保存内容...";
+            // 先获取SHA
+            let sha = null;
             try {
-                // 模拟API调用
-                const response = await new Promise(resolve => {
-                    setTimeout(() => {
-                        resolve({ status: 200 });
-                    }, 1000);
-                });
-                
-                if (response.status === 200) {
-                    statusText.textContent = '已连接';
-                    updateLastSaved();
-                    showNotification('保存成功', true);
+                const res = await fetch(apiBase, { cache: "no-store" });
+                if (res.ok) {
+                    const json = await res.json();
+                    sha = json.sha;
                 }
-            } catch (error) {
-                statusText.textContent = '保存失败';
-                showNotification('保存失败: ' + error.message, false);
+            } catch (err) {}
+
+            // 构造PUT请求
+            const body = {
+                message: "更新共享内容",
+                content: btoa(unescape(encodeURIComponent(text))),
+            };
+            if (sha) body.sha = sha;
+
+            try {
+                const res = await fetch(apiBase, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": "token " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (res.ok) {
+                    document.getElementById("status").textContent = "保存成功！";
+                    loadContent();
+                } else {
+                    const err = await res.json();
+                    document.getElementById("status").textContent = "保存失败：" + (err.message || res.status);
+                }
+            } catch (err) {
+                document.getElementById("status").textContent = "保存失败：" + err;
             }
         }
-        
-        // 初始化
-        async function init() {
-            await fetchContent();
-            
-            saveBtn.addEventListener('click', saveContent);
-            refreshBtn.addEventListener('click', fetchContent);
-            
-            // 30秒自动保存
-            setInterval(() => {
-                if (contentTextarea.value.trim()) {
-                    saveContent();
-                }
-            }, 30000);
-        }
-        
-        window.addEventListener('DOMContentLoaded', init);
+
+        document.getElementById("saveBtn").onclick = saveContent;
+        document.getElementById("refreshBtn").onclick = loadContent;
+
+        loadContent();
     </script>
 </body>
-    </html>
+</html>
