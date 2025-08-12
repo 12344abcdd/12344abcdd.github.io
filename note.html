@@ -79,7 +79,7 @@
     // 3. Token 输入框
     function askForToken(msg) {
         document.getElementById("loginBox").innerHTML = `
-            <b>${msg ? msg : "需要 GitHub Token 才能保存。请粘贴你的 Personal Access Token：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"}</b><br>
+            <b>${msg ? msg : "需要 GitHub Token 才能保存。请粘贴你的 Personal Access Token： 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"}</b><br>
             <input id="tokenInput" type="password" style="width:300px;" placeholder="ghp_...">
             <button onclick="setToken()">保存Token</button>
             <div style="font-size:90%;margin-top:0.5em;">
