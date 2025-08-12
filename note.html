@@ -2,197 +2,112 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>共享文本编辑器（自动合并PR版）</title>
+    <title>共享文本编辑器</title>
     <style>
-        body { font-family: Arial,sans-serif; margin:40px; }
-        #content { width: 100%; min-height: 200px; }
-        #saveBtn, #refreshBtn { margin-top:10px; }
-        #status { margin-top:10px; color:green; }
-        #prLink { margin-top:10px; }
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        textarea { width: 100%; height: 200px; font-size: 1.1em; }
+        #saveStatus { color: green; margin-top: 0.5em; }
     </style>
 </head>
 <body>
     <h2>共享文本编辑器</h2>
-    <textarea id="content"></textarea><br>
-    <button id="saveBtn">保存内容</button>
-    <button id="refreshBtn">刷新内容</button>
-    <div id="status"></div>
-    <div id="prLink"></div>
-    <hr>
-    <div style="color:#888;font-size:13px;">
-        首次保存需要 GitHub Token（<a href="https://github.com/settings/tokens/new?scopes=public_repo" target="_blank">获取方式</a>，仅需 public_repo 权限），安全地本地使用，不会上传。
+    <p>任何人都可以查看和修改下面的内容，内容会自动保存到 shared.txt 文件。</p>
+    <textarea id="sharedText"></textarea>
+    <div>
+      <button id="saveBtn">保存</button>
+      <span id="saveStatus"></span>
     </div>
+    <div id="loginBox" style="margin-top:1em;color:#555;"></div>
+    <p style="color:#888;font-size:0.95em;">
+      注意：首次编辑需要 GitHub 账号 <b>Personal Access Token</b> 进行认证。仅编辑时需要，查看无需认证。
+    </p>
     <script>
-    // 仓库信息
     const owner = "abcdd12344";
     const repo = "abcdd12344.github.io";
-    const filePath = "shared.txt";
-    const apiBase = "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + filePath;
+    const path = "shared.txt";
+    let fileSha = "";
+    let token = localStorage.getItem("gh_token") || "";
 
-    // 加载内容
-    async function loadContent() {
-        document.getElementById("status").textContent = "正在加载内容...";
-        document.getElementById("prLink").innerHTML = "";
-        try {
-            const res = await fetch(apiBase, { cache: "no-store" });
-            if (res.ok) {
-                const json = await res.json();
-                const content = atob(json.content.replace(/\n/g, ''));
-                document.getElementById("content").value = content;
-                document.getElementById("status").textContent = "内容已加载。";
-            } else {
-                document.getElementById("status").textContent = "未找到 shared.txt 文件。";
-            }
-        } catch (err) {
-            document.getElementById("status").textContent = "加载失败：" + err;
+    // 1. 获取 shared.txt 内容
+    async function fetchSharedText() {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            document.getElementById("sharedText").value = "(文件不存在或无法读取)";
+            return;
         }
+        const data = await res.json();
+        fileSha = data.sha;
+        document.getElementById("sharedText").value = atob(data.content.replace(/\n/g, ""));
     }
 
-    // 保存，自动 fork+新分支+修改+PR
-    async function saveContent() {
-        const text = document.getElementById("content").value;
-        const token = prompt("请输入您的 GitHub Token（仅需 public_repo 权限）：");
-        if (!token) return;
-        document.getElementById("status").textContent = "正在保存内容...";
-        document.getElementById("prLink").innerHTML = "";
-
-        // 获取用户信息
-        let username = "";
-        try {
-            const userRes = await fetch("https://api.github.com/user", {
-                headers: { Authorization: "token " + token }
-            });
-            if (userRes.ok) {
-                username = (await userRes.json()).login;
-            } else {
-                document.getElementById("status").textContent = "Token无效";
-                return;
-            }
-        } catch {
-            document.getElementById("status").textContent = "无法获取用户信息";
+    // 2. 保存内容到 shared.txt
+    async function saveSharedText() {
+        const content = btoa(unescape(encodeURIComponent(document.getElementById("sharedText").value)));
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        if (!token) {
+            askForToken();
             return;
         }
-
-        // 检查用户是否fork
-        let forkRepo = username + "/" + repo;
-        let isForked = false;
-        try {
-            const forkRes = await fetch("https://api.github.com/repos/" + forkRepo, {
-                headers: { Authorization: "token " + token }
-            });
-            if (forkRes.ok) isForked = true;
-        } catch {}
-        // 没有fork则fork
-        if (!isForked) {
-            document.getElementById("status").textContent = "正在 Fork 仓库...";
-            const forkRes = await fetch("https://api.github.com/repos/" + owner + "/" + repo + "/forks", {
-                method: "POST",
-                headers: { Authorization: "token " + token }
-            });
-            if (!forkRes.ok) {
-                document.getElementById("status").textContent = "Fork 失败";
-                return;
+        document.getElementById("saveStatus").textContent = "保存中...";
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: "Update shared.txt via web",
+                content: content,
+                sha: fileSha
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            fileSha = data.content.sha;
+            document.getElementById("saveStatus").textContent = "保存成功！";
+        } else {
+            document.getElementById("saveStatus").textContent = "保存失败: " + (data.message || "");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                askForToken("Token 失效，请重新输入。");
             }
-            // Fork后等待几秒
-            await new Promise(r => setTimeout(r, 2500));
         }
-
-        // 获取 main 分支最新 commit sha
-        let baseSha = "";
-        try {
-            const branchRes = await fetch("https://api.github.com/repos/" + forkRepo + "/git/refs/heads/main", {
-                headers: { Authorization: "token " + token }
-            });
-            if (branchRes.ok) {
-                baseSha = (await branchRes.json()).object.sha;
-            }
-        } catch {}
-
-        // 创建新分支
-        const branchName = "update-shared-" + Date.now();
-        document.getElementById("status").textContent = "正在创建新分支...";
-        let newBranchSha = "";
-        try {
-            const branchRes = await fetch("https://api.github.com/repos/" + forkRepo + "/git/refs", {
-                method: "POST",
-                headers: { Authorization: "token " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({ ref: "refs/heads/" + branchName, sha: baseSha })
-            });
-            if (branchRes.ok) {
-                newBranchSha = baseSha;
-            } else {
-                document.getElementById("status").textContent = "新分支创建失败";
-                return;
-            }
-        } catch {
-            document.getElementById("status").textContent = "新分支创建失败";
-            return;
-        }
-
-        // 获取 shared.txt 的 SHA
-        let fileSha = null;
-        try {
-            const fileRes = await fetch("https://api.github.com/repos/" + forkRepo + "/contents/" + filePath + "?ref=" + branchName, {
-                headers: { Authorization: "token " + token }
-            });
-            if (fileRes.ok) {
-                fileSha = (await fileRes.json()).sha;
-            }
-        } catch {}
-
-        // 修改 shared.txt
-        document.getElementById("status").textContent = "正在提交内容...";
-        const putBody = {
-            message: "更新共享内容",
-            content: btoa(unescape(encodeURIComponent(text)))
-        };
-        if (fileSha) putBody.sha = fileSha;
-        try {
-            const putRes = await fetch("https://api.github.com/repos/" + forkRepo + "/contents/" + filePath + "?ref=" + branchName, {
-                method: "PUT",
-                headers: { Authorization: "token " + token, "Content-Type": "application/json" },
-                body: JSON.stringify(putBody)
-            });
-            if (!putRes.ok) {
-                document.getElementById("status").textContent = "内容提交失败";
-                return;
-            }
-        } catch {
-            document.getElementById("status").textContent = "内容提交失败";
-            return;
-        }
-
-        // 创建 PR
-        document.getElementById("status").textContent = "正在创建 PR...";
-        let prUrl = "";
-        try {
-            const prRes = await fetch("https://api.github.com/repos/" + owner + "/" + repo + "/pulls", {
-                method: "POST",
-                headers: { Authorization: "token " + token, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title: "更新共享内容",
-                    head: username + ":" + branchName,
-                    base: "main",
-                    body: "自动提交内容到 shared.txt"
-                })
-            });
-            if (prRes.ok) {
-                const prData = await prRes.json();
-                prUrl = prData.html_url;
-                document.getElementById("status").textContent = "PR 已创建，等待自动合并...";
-                document.getElementById("prLink").innerHTML = `<a href="${prUrl}" target="_blank">查看 PR</a>`;
-                loadContent();
-            } else {
-                document.getElementById("status").textContent = "PR 创建失败";
-            }
-        } catch {
-            document.getElementById("status").textContent = "PR 创建失败";
-        }
+        setTimeout(() => document.getElementById("saveStatus").textContent = "", 3000);
     }
 
-    document.getElementById("saveBtn").onclick = saveContent;
-    document.getElementById("refreshBtn").onclick = loadContent;
-    loadContent();
+    // 3. Token 输入框
+    function askForToken(msg) {
+        document.getElementById("loginBox").innerHTML = `
+            <b>${msg ? msg : "需要 GitHub Token 才能保存。请粘贴你的 Personal Access Token："}</b><br>
+            <input id="tokenInput" type="password" style="width:300px;" placeholder="ghp_...">
+            <button onclick="setToken()">保存Token</button>
+            <div style="font-size:90%;margin-top:0.5em;">
+              <a href="https://github.com/settings/tokens?type=beta" target="_blank">获取Token (勾选repo权限即可)</a>
+            </div>
+        `;
+    }
+    window.setToken = function() {
+        const t = document.getElementById("tokenInput").value.trim();
+        if (t.startsWith("ghp_")) {
+            token = t;
+            localStorage.setItem("gh_token", t);
+            document.getElementById("loginBox").innerHTML = "";
+            saveSharedText();
+        } else {
+            askForToken("Token格式错误，请重新输入！");
+        }
+    };
+
+    // 4. 保存按钮绑定
+    document.getElementById("saveBtn").onclick = saveSharedText;
+
+    // 5. 自动刷新内容
+    setInterval(fetchSharedText, 10000);
+
+    // 6. 页面加载时获取内容
+    fetchSharedText();
+
     </script>
 </body>
 </html>
