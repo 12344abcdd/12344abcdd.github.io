@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RedStone Editor</title>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <title>Minecraft RedStone Editor</title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -21,7 +20,7 @@
             --accent: #e74c3c;
             --tile: #eef2f7;
             --text: #2d3748;
-            --grid-line: #d1dbe6;
+            --grid-line: rgb(183, 170, 170);
             --border: #c1cbd6;
             --button-bg: #eef2f7;
             --button-hover: #e1e8f0;
@@ -52,7 +51,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, var(--bg), #f0f4f8);
+            background: var(--bg);
             color: var(--text);
             height: 100vh;
             overflow: hidden;
@@ -85,7 +84,7 @@
             font-weight: 600;
             text-shadow: 0 0 10px rgba(231, 76, 60, 0.2);
             transition: all 0.6s ease;
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            background: linear-gradient(45deg, #e74c3c, #c0392b, #e74c3c);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -164,14 +163,18 @@
             transition: all 0.6s ease;
         }
         
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
         #component-search {
             width: 100%;
-            padding: 12px 16px;
+            padding: 12px 16px 12px 40px;
             border-radius: 8px;
             border: 1px solid var(--border);
             background: var(--tile);
             color: var(--text);
-            margin-bottom: 20px;
             font-size: 0.95rem;
             transition: all 0.6s ease;
             box-shadow: var(--card-shadow);
@@ -181,6 +184,32 @@
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text);
+            opacity: 0.6;
+        }
+        
+        .search-hint {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85rem;
+            color: #888;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        #component-search:focus + .search-hint {
+            display: block;
         }
         
         .category {
@@ -256,26 +285,13 @@
             transition: all 0.6s ease;
         }
         
-        #p5-canvas {
+        #canvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-        }
-        
-        .grid-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(rgba(209, 219, 230, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(209, 219, 230, 0.3) 1px, transparent 1px);
-            background-size: 30px 30px;
-            pointer-events: none;
-            transition: all 0.6s ease;
+            cursor: default;
         }
         
         body.theme-dark .grid-overlay {
@@ -322,28 +338,27 @@
         
         /* 缩放控制按钮 */
         .zoom-controls {
-            position: absolute;
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
             display: flex;
-            gap: 12px;
+            gap: 6px;
             background: var(--zoom-controls-bg);
-            padding: 10px 20px;
-            border-radius: 50px;
+            padding: 6px 10px;
+            border-radius: 20px;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            z-index: 100;
             transition: all 0.6s ease;
             backdrop-filter: blur(6px);
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
         }
         
         .zoom-btn {
             background: var(--button-bg);
             color: var(--text);
             border: none;
-            width: 36px;
-            height: 36px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -351,18 +366,13 @@
             justify-content: center;
             transition: all 0.3s ease;
             box-shadow: var(--card-shadow);
+            font-size: 0.8rem;
         }
         
         .zoom-btn:hover {
             background: var(--accent);
             color: white;
             transform: scale(1.1);
-        }
-        
-        #zoom-reset {
-            width: auto;
-            padding: 0 18px;
-            border-radius: 21px;
         }
         
         /* 滚动条美化 */
@@ -401,7 +411,8 @@
             }
             
             .zoom-controls {
-                bottom: 90px;
+                position: static;
+                transform: none;
             }
         }
         
@@ -459,16 +470,12 @@
             }
             
             .zoom-controls {
-                padding: 8px 16px;
+                padding: 6px 8px;
             }
             
             .zoom-btn {
-                width: 34px;
-                height: 34px;
-            }
-            
-            #zoom-reset span {
-                display: none;
+                width: 26px;
+                height: 26px;
             }
         }
         
@@ -497,9 +504,431 @@
             background: linear-gradient(90deg, #e74c3c, #c0392b, #e74c3c);
             z-index: 100;
         }
+        
+        /* 模态框 - 优化版 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-content {
+            background: var(--panel);
+            padding: 30px;
+            border-radius: 16px;
+            width: 500px;
+            max-width: 90%;
+            box-shadow: var(--shadow);
+            position: relative;
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: all 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+        
+        .modal.show .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(231, 76, 60, 0.2);
+        }
+        
+        .modal-header h2 {
+            color: var(--accent);
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        
+        .modal-header h2 i {
+            font-size: 1.4rem;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(231, 76, 60, 0.1);
+        }
+        
+        .modal-body {
+            margin-bottom: 25px;
+            padding: 10px 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+        
+        /* 统一按钮大小 */
+        .modal-footer .modal-btn {
+            flex: 1;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .close-modal:hover {
+            color: var(--accent);
+            background: rgba(231, 76, 60, 0.1);
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text);
+            font-size: 1.05rem;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--tile);
+            color: var(--text);
+            font-size: 1.05rem;
+            transition: all 0.3s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2);
+        }
+        
+        .modal-btn {
+            padding: 12px 28px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            min-width: 120px;
+            justify-content: center;
+        }
+        
+        .primary-btn {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        
+        .secondary-btn {
+            background: var(--button-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        
+        .modal-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .primary-btn:hover {
+            background: #c0392b;
+        }
+        
+        .secondary-btn:hover {
+            background: var(--button-hover);
+        }
+        
+        /* 资源加载指示器 */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loader-spinner {
+            border: 6px solid var(--border);
+            border-top: 6px solid var(--accent);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loader-text {
+            font-size: 1.2rem;
+            color: var(--text);
+            text-align: center;
+            max-width: 80%;
+        }
+        
+        .loader-progress {
+            width: 300px;
+            height: 10px;
+            background: var(--border);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .loader-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 资源缺失提示 */
+        .resource-error {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 2000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .resource-error h2 {
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        
+        .resource-error p {
+            color: var(--text);
+            margin-bottom: 15px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        
+        /* 帮助内容样式 */
+        .help-content {
+            padding: 15px;
+            background: var(--tile);
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+        
+        .help-content h3 {
+            color: var(--accent);
+            margin: 20px 0 8px; /* 减小下边距 */
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .help-content h3 i {
+            font-size: 1.1rem;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(231, 76, 60, 0.1);
+            border-radius: 50%;
+        }
+        
+        .help-content ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .help-content li {
+            margin-bottom: 8px; /* 减小行距 */
+            padding-left: 8px;
+        }
+        
+        .help-content .highlight {
+            background: rgba(231, 76, 60, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: var(--accent);
+            font-weight: 500;
+            display: inline-block;
+            margin: 0 4px;
+        }
+        
+        /* 确认信息样式 */
+        .confirmation-message {
+            text-align: center;
+            padding: 20px 0;
+            font-size: 1.15rem;
+            line-height: 1.7;
+        }
+        
+        .confirmation-message i {
+            font-size: 3.5rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+            display: block;
+            opacity: 0.8;
+        }
+        
+        .confirmation-message p {
+            margin-bottom: 15px;
+        }
+        
+        /* 文件上传样式 */
+        .file-upload {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .file-drop-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            background: var(--tile);
+            cursor: pointer;
+        }
+        
+        .file-drop-area:hover, .file-drop-area.drag-over {
+            border-color: var(--accent);
+            background: rgba(231, 76, 60, 0.05);
+        }
+        
+        .file-drop-area i {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .file-drop-text {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .file-drop-hint {
+            color: #888;
+            font-size: 0.95rem;
+        }
+        
+        /* 状态信息 */
+        .load-status {
+            padding: 15px;
+            border-radius: 8px;
+            background: var(--tile);
+            text-align: center;
+            font-size: 1.05rem;
+            margin-top: 15px;
+        }
+        
+        /* 警告文本样式 */
+        .warning-text {
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        /* 搜索结果提示 */
+        .search-results {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--text);
+            padding: 8px;
+            border-radius: 6px;
+            background: var(--tile);
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- 资源加载指示器 -->
+    <div class="loader" id="resource-loader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">正在加载红石组件资源...</div>
+        <div class="loader-progress">
+            <div class="loader-progress-bar" id="progress-bar"></div>
+        </div>
+    </div>
+    
+    <!-- 资源缺失提示 -->
+    <div class="resource-error" id="resource-error">
+        <h2><i class="fas fa-exclamation-triangle"></i> 资源加载错误</h2>
+        <p>无法加载红石组件资源。请确保您的本地文件结构包含一个名为 <code>assets</code> 的文件夹，其中包含所有必要的红石组件图片。</p>
+        <p>文件结构应如下所示：</p>
+        <pre style="background: var(--tile); padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; max-width: 80%;">
+your-project/
+├── index.html
+└── assets/
+    ├── air.webp
+    ├── sand.webp
+    ├── smoothstone.webp
+    ...（所有其他红石组件图片）
+        </pre>
+        <p>如果您还没有这些资源，请下载完整的资源包并解压到项目目录中。</p>
+        <button class="btn primary-btn" id="reload-btn" style="margin-top: 20px;">
+            <i class="fas fa-sync-alt"></i> 重新加载
+        </button>
+    </div>
+    
     <div class="title-decoration"></div>
     
     <!-- 顶部标题栏 -->
@@ -508,15 +937,18 @@
             <h1>RedStone Editor</h1>
         </div>
         <div class="controls">
-            <!-- 夜间模式按钮 -->
+            <!-- 主题按钮 -->
             <button class="btn" id="theme-toggle">
-                <i class="fas fa-moon"></i> <span>夜间模式</span>
+                <i class="fas fa-moon"></i> <span>主题</span>
             </button>
             <button class="btn" id="clear-btn">
-                <i class="fas fa-broom"></i> <span>清空画布</span>
+                <i class="fas fa-broom"></i> <span>清空</span>
             </button>
             <button class="btn" id="save-btn">
-                <i class="fas fa-save"></i> <span>保存设计</span>
+                <i class="fas fa-save"></i> <span>导出</span>
+            </button>
+            <button class="btn" id="load-btn">
+                <i class="fas fa-folder-open"></i> <span>导入</span>
             </button>
             <button class="btn" id="help-btn">
                 <i class="fas fa-question-circle"></i> <span>帮助</span>
@@ -532,8 +964,11 @@
                 <h2><i class="fas fa-cubes"></i> 组件库</h2>
             </div>
             
-            <input type="text" id="component-search" placeholder="搜索组件...">
-            
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="component-search" placeholder="搜索组件（中文/拼音/英文）">
+            </div>
+
             <div id="components-list">
                 <!-- 组件分类将在这里动态生成 -->
             </div>
@@ -541,16 +976,14 @@
         
         <!-- 右侧画布区域 -->
         <div id="canvas-container">
-            <div id="p5-canvas"></div>
-            <div class="grid-overlay"></div>
-            
-            <!-- 缩放控制按钮 -->
+            <canvas id="canvas"></canvas>
+            <!-- 缩放控件 -->
             <div class="zoom-controls">
                 <button class="zoom-btn" id="zoom-out" title="缩小">
                     <i class="fas fa-search-minus"></i>
                 </button>
                 <button class="zoom-btn" id="zoom-reset" title="重置缩放">
-                    <i class="fas fa-sync-alt"></i> <span>100%</span>
+                    <i class="fas fa-sync-alt"></i>
                 </button>
                 <button class="zoom-btn" id="zoom-in" title="放大">
                     <i class="fas fa-search-plus"></i>
@@ -577,177 +1010,547 @@
             <i class="fas fa-adjust"></i> <span>模式: 日间模式</span>
         </div>
     </div>
+    
+    <!-- 保存模态框 -->
+    <div class="modal" id="save-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-save"></i> 保存设计</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="design-name"><i class="fas fa-tag"></i> 设计名称</label>
+                    <input type="text" id="design-name" placeholder="输入设计名称">
+                </div>
+                <div class="input-group">
+                    <label for="design-description"><i class="fas fa-align-left"></i> 描述 (可选)</label>
+                    <input type="text" id="design-description" placeholder="输入设计描述">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary-btn close-modal">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+                <button class="modal-btn primary-btn" id="confirm-save">
+                    <i class="fas fa-save"></i> 保存设计
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 导入模态框 -->
+    <div class="modal" id="load-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-folder-open"></i> 导入设计</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload">
+                    <div class="file-drop-area" id="file-drop-area">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <div class="file-drop-text">拖放设计文件到这里</div>
+                        <div class="file-drop-hint">或点击选择文件</div>
+                    </div>
+                    <input type="file" id="load-file" accept=".json" style="display: none;">
+                </div>
+                <div class="load-status" id="load-status">
+                    <i class="fas fa-info-circle"></i> 请选择或拖放JSON设计文件
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary-btn close-modal">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+                <button class="modal-btn primary-btn" id="confirm-load">
+                    <i class="fas fa-file-import"></i> 导入设计
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 清空确认模态框 -->
+    <div class="modal" id="clear-confirm-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-broom"></i> 清空画布</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirmation-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>确定要清空整个画布吗？</p>
+                    <p>此操作将<strong class="warning-text">永久移除</strong>所有已放置的组件且无法撤销。</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary-btn close-modal">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+                <button class="modal-btn primary-btn" id="confirm-clear">
+                    <i class="fas fa-check"></i> 确认清空
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 帮助模态框 -->
+    <div class="modal" id="help-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-question-circle"></i> 使用帮助</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="help-content">
+                <h3><i class="fas fa-mouse-pointer"></i> 基本操作</h3>
+                <ul>
+                    <li>从左侧面板选择组件</li>
+                    <li>在画布上点击放置组件</li>
+                    <li>再次点击同一位置可移除组件</li>
+                    <li>使用鼠标中键拖拽移动画布</li>
+                    <li>使用滚轮缩放画布</li>
+                </ul>
+
+                <h3><i class="fas fa-search"></i> 搜索功能</h3>
+                <ul>
+                    <li>支持中文名称搜索（如"红石"）</li>
+                    <li>支持拼音搜索（如"hongshi"）</li>
+                    <li>支持拼音首字母搜索（如"hs"）</li>
+                    <li>支持英文名称搜索（如"redstone"）</li>
+                </ul>
+                
+                <h3><i class="fas fa-search"></i> 缩放控制</h3>
+                <ul>
+                    <li><i class="fas fa-search-plus"></i> 放大视图</li>
+                    <li><i class="fas fa-search-minus"></i> 缩小视图</li>
+                    <li><i class="fas fa-sync-alt"></i> 重置缩放</li>
+                </ul>
+                
+                <h3><i class="fas fa-user"></i> 项目信息</h3>
+                <ul>
+                    <li>项目版本：1.3</li>
+                    <li>BILIBILI：<a href="https://space.bilibili.com/1917782316" target="_blank">ZXBHELLO</a></li>
+                    <li>E-MAIL：<a href="mailto:ZXBHELLO@GMAIL.COM">ZXBHELLO@GMAIL.COM</a></li>
+                    <li>GITHUB：<a href="https://github.com/ZXBHELLO/MinecraftRedStoneEditor-2D" target="_blank">MinecraftRedStoneEditor</a></li>
+                    <li>遇到错误？缺少组件？提供想法？<br>
+                        请前往：<a href="https://github.com/ZXBHELLO/MinecraftRedStoneEditor-2D/issues" target="_blank">项目提议</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn primary-btn close-modal">
+                <i class="fas fa-check"></i> 我明白了
+            </button>
+        </div>
+    </div>
+</div>
 
     <script>
-        // 组件数据
+        // 组件数据（添加中文名称和拼音）
         const components = {
             "基础方块": [
-                "air", "sand", "smoothstone", "obsidian", "slimeblock", 
-                "honeyblock", "ironblock", "rsblock", "scaffolding", "powderedsnow"
+                {id: "air", name: "空气", pinyin: "kongqi"},
+                {id: "bedrock", name: "基岩", pinyin: "jiyan"},
+                {id: "smoothstone", name: "平滑石", pinyin: "pinghuashi"},
+                {id: "obsidian", name: "黑曜石", pinyin: "heiyaoshi"},
+                {id: "slimeblock", name: "粘液块", pinyin: "nianyekuai"},                
+                {id: "honeyblock", name: "蜂蜜块", pinyin: "fengmikuai"},
+                {id: "ironblock", name: "铁块", pinyin: "tiekuai"},
+                {id: "rsblock", name: "红石块", pinyin: "hongshikuai"},
+                {id: "scaffolding", name: "脚手架", pinyin: "jiaoshoujia"},
+                {id: "powderedsnow", name: "细雪", pinyin: "xixue"},
+                {id: "ice", name: "冰", pinyin: "bing"},
+                {id: "sand", name: "沙子", pinyin: "shazi"},
+                {id: "soulsand", name: "灵魂沙", pinyin: "linghunsha"},
+                {id: "magma", name: "岩浆块", pinyin: "yanjiangkuai"},
+                {id: "glass", name: "玻璃", pinyin: "boli"},
+                {id: "light_blue_stained_glass", name: "淡蓝色玻璃", pinyin: "danlanseboli"},
+                {id: "light_blue_stained_glass_pane_top", name: "淡蓝色玻璃板", pinyin: "danlanseboliban"},
+                {id: "white_wool", name: "白色羊毛", pinyin: "baiseyangmao"},
+                {id: "gray_wool", name: "灰色羊毛", pinyin: "huiseyangmao"},
+                {id: "glazedterracotta", name: "釉陶", pinyin: "youtao"},
+                {id: "slabt", name: "石台阶", pinyin: "shitaijie"},
+                {id: "white_concrete", name: "白色混凝土", pinyin: "baisehunningtu"},
+                {id: "polished_deepslate", name: "磨制深板岩", pinyin: "mozhishenbanyan"},
+                {id: "polished_diorite", name: "磨制闪长岩", pinyin: "mozhishanchangyan"},
+                {id: "polished_granite", name: "磨制花岗岩", pinyin: "mozhihuagangyan"},
+                {id: "cactus", name: "仙人掌", pinyin: "xianrenzhang"},
+                {id: "dirt_path", name: "草径", pinyin: "caojing"}
             ],
             "机械元件": [
-                "duston", "dustoff", "torchon", "torchoff", "torchlon", 
-                "torchloff", "torchron", "torchroff", "repeaterlon", "repeaterloff", 
-                "repeaterron", "repeaterroff", "comparatorlon", "comparatorloff", 
-                "comparatorron", "comparatorroff", "lampon", "lampoff", "target",
-                "pistonu", "pistond", "pistonl", "pistonr", "stickypistonu", 
-                "stickypistond", "stickypistonl", "stickypistonr", "observeru", 
-                "observerd", "observerl", "observerr", "dropperu", "dropperd", 
-                "dropperl", "dropperr", "hopperd", "hopperl", "hopperr",
-                "arail", "arailsl", "arailsr", "prail", "prailsl", "prailsr"
+                {id: "duston", name: "红石粉（激活）", pinyin: "hongshifenjihuo"},
+                {id: "dustoff", name: "红石粉", pinyin: "hongshifen"},
+                {id: "torchon", name: "红石火把（激活）", pinyin: "hongshihuobajihuo"},
+                {id: "torchoff", name: "红石火把", pinyin: "hongshihuoba"},
+                {id: "torchlon", name: "左侧红石火把（激活）", pinyin: "zuocehongshihuobajihuo"},
+                {id: "torchloff", name: "左侧红石火把", pinyin: "zuocehongshihuoba"},
+                {id: "torchron", name: "右侧红石火把（激活）", pinyin: "youcehongshihuobajihuo"},
+                {id: "torchroff", name: "右侧红石火把", pinyin: "youcehongshihuoba"},
+                {id: "repeaterlon", name: "左侧中继器（激活）", pinyin: "zuocezhongjiqijihuo"},
+                {id: "repeaterloff", name: "左侧中继器", pinyin: "zuocezhongjiqi"},
+                {id: "repeaterron", name: "右侧中继器（激活）", pinyin: "youcezhongjiqijihuo"},
+                {id: "repeaterroff", name: "右侧中继器", pinyin: "youcezhongjiqi"},
+                {id: "comparatorlon", name: "左侧比较器（激活）", pinyin: "zuocebijiaoqijihuo"},
+                {id: "comparatorloff", name: "左侧比较器", pinyin: "zuocebijiaoqi"},
+                {id: "comparatorron", name: "右侧比较器（激活）", pinyin: "youcebijiaoqijihuo"},
+                {id: "comparatorroff", name: "右侧比较器", pinyin: "youcebijiaoqi"},
+                {id: "lampon", name: "红石灯（激活）", pinyin: "hongshidengjihuo"},
+                {id: "lampoff", name: "红石灯", pinyin: "hongshideng"},
+                {id: "copper_bulb_lit", name: "铜灯（亮）", pinyin: "tongdengliang"},
+                {id: "copper_bulb_unlit", name: "铜灯", pinyin: "tongdeng"},
+                {id: "pistonu", name: "活塞（上）", pinyin: "huosaishang"},
+                {id: "pistond", name: "活塞（下）", pinyin: "huosaixia"},
+                {id: "pistonl", name: "活塞（左）", pinyin: "huosaizuo"},
+                {id: "pistonr", name: "活塞（右）", pinyin: "huosaiyou"},
+                {id: "pistonf", name: "活塞（前）", pinyin: "huosaiqian"},
+                {id: "pistonb", name: "活塞（后）", pinyin: "huosaihou"},
+                {id: "pistonheadd", name: "活塞头（下）", pinyin: "huosaitouxia"},
+                {id: "pistonheadl", name: "活塞头（左）", pinyin: "huosaitouzuo"},
+                {id: "pistonheadr", name: "活塞头（右）", pinyin: "huosaitouyou"},
+                {id: "pistonheadu", name: "活塞头（上）", pinyin: "huosaitoushang"},
+                {id: "pistonbodyd", name: "活塞体（下）", pinyin: "huosaitixia"},
+                {id: "pistonbodyl", name: "活塞体（左）", pinyin: "huosaitizuo"},
+                {id: "pistonbodyr", name: "活塞体（右）", pinyin: "huosaitiyou"},
+                {id: "pistonbodyu", name: "活塞体（上）", pinyin: "huosaitishang"},
+                {id: "stickypistonu", name: "粘性活塞（上）", pinyin: "nianxinghuosaishang"},
+                {id: "stickypistond", name: "粘性活塞（下）", pinyin: "nianxinghuosaixia"},
+                {id: "stickypistonl", name: "粘性活塞（左）", pinyin: "nianxinghuosaizuo"},
+                {id: "stickypistonr", name: "粘性活塞（右）", pinyin: "nianxinghuosaiyou"},
+                {id: "stickypistonf", name: "粘性活塞（前）", pinyin: "nianxinghuosaiqian"},
+                {id: "stickypistonb", name: "粘性活塞（后）", pinyin: "nianxinghuosaihou"},
+                {id: "stickypistonheadd", name: "粘性活塞头（下）", pinyin: "nianxinghuosaitouxia"},
+                {id: "stickypistonheadl", name: "粘性活塞头（左）", pinyin: "nianxinghuosaitouzuo"},
+                {id: "stickypistonheadr", name: "粘性活塞头（右）", pinyin: "nianxinghuosaitouyou"},
+                {id: "stickypistonheadu", name: "粘性活塞头（上）", pinyin: "nianxinghuosaitoushang"},
+                {id: "observeru", name: "侦测器（上）", pinyin: "zhenceqishang"},
+                {id: "observerd", name: "侦测器（下）", pinyin: "zhenceqixia"},
+                {id: "observerl", name: "侦测器（左）", pinyin: "zhenceqizuo"},
+                {id: "observerr", name: "侦测器（右）", pinyin: "zhenceqiyou"},
+                {id: "observerf", name: "侦测器（前）", pinyin: "zhenceqiqian"},
+                {id: "observerb", name: "侦测器（后）", pinyin: "zhenceqihou"},
+                {id: "dropperu", name: "投掷器（上）", pinyin: "touzhiqishang"},
+                {id: "dropperd", name: "投掷器（下）", pinyin: "touzhiqixia"},
+                {id: "dropperl", name: "投掷器（左）", pinyin: "touzhiqizuo"},
+                {id: "dropperr", name: "投掷器（右）", pinyin: "touzhiqiyou"},
+                {id: "dropperf", name: "投掷器（前）", pinyin: "touzhiqiqian"},
+                {id: "dropperd", name: "投掷器（后）", pinyin: "touzhiqihou"},
+                {id: "crafter", name: "工作台", pinyin: "gongzuotai"},
+                {id: "crafteru", name: "工作台（上）", pinyin: "gongzuotaishang"},
+                {id: "crafterd", name: "工作台（下）", pinyin: "gongzuotaixia"},
+                {id: "crafterl", name: "工作台（左）", pinyin: "gongzuotaizuo"},
+                {id: "crafterr", name: "工作台（右）", pinyin: "gongzuotaiyou"},
+                {id: "hopperd", name: "漏斗（下）", pinyin: "loudouxia"},
+                {id: "hopperl", name: "漏斗（左）", pinyin: "loudouzuo"},
+                {id: "hopperr", name: "漏斗（右）", pinyin: "loudouyou"},
+                {id: "hopperb", name: "漏斗（后）", pinyin: "loudouhou"},
+                {id: "target", name: "标靶", pinyin: "biao"},
+                {id: "arail", name: "激活铁轨", pinyin: "jihuotiegui"},
+                {id: "arailsl", name: "左激活铁轨", pinyin: "zuojihuotiegui"},
+                {id: "arailsr", name: "右激活铁轨", pinyin: "youjihuotiegui"},
+                {id: "prail", name: "动力铁轨", pinyin: "donglitiegui"},
+                {id: "prailsl", name: "左动力铁轨", pinyin: "zuodonglitiegui"},
+                {id: "prailsr", name: "右动力铁轨", pinyin: "youdonglitiegui"},
+                {id: "fencegatec", name: "栅栏门（关）", pinyin: "zhanlangmenguan"},
+                {id: "fencegateo", name: "栅栏门（开）", pinyin: "zhanlangmenkai"},
+                {id: "trapdooru", name: "活板门（上）", pinyin: "huobanmenshang"},
+                {id: "trapdoord", name: "活板门（下）", pinyin: "huobanmenxia"},
+                {id: "trapdoorl", name: "活板门（左）", pinyin: "huobanmenzuo"},
+                {id: "trapdoorr", name: "活板门（右）", pinyin: "huobanmenyou"},
+                {id: "wtrapdooru", name: "木活板门（上）", pinyin: "muhuobanmenshang"},
+                {id: "wtrapdoord", name: "木活板门（下）", pinyin: "muhuobanmenxia"},
+                {id: "wtrapdoorl", name: "木活板门（左）", pinyin: "muhuobanmenzuo"},
+                {id: "wtrapdoorr", name: "木活板门（右）", pinyin: "muhuobanmenyou"},
+                {id: "noteblock", name: "音符盒", pinyin: "yinfuhe"},
+                {id: "daylight_detector", name: "阳光传感器", pinyin: "yangguangchuanganqi"},
+                {id: "tnt", name: "TNT", pinyin: "tnt"}
             ],
             "装饰方块": [
-                "chest", "chestdl", "chestdr", "shulkerboxu", "shulkerboxd", 
-                "shulkerboxl", "shulkerboxr", "barrel", "cauldron", "composter", 
-                "crafter", "cake14", "noteblock"
+                {id: "chest", name: "箱子", pinyin: "xiangzi"},
+                {id: "chestdl", name: "双箱子（左）", pinyin: "shuangxiangzizuo"},
+                {id: "chestdr", name: "双箱子（右）", pinyin: "shuangxiangziyou"},
+                {id: "shulkerboxu", name: "潜影盒（上）", pinyin: "qianyingheshang"},
+                {id: "shulkerboxd", name: "潜影盒（下）", pinyin: "qianyinghexia"},
+                {id: "shulkerboxl", name: "潜影盒（左）", pinyin: "qianyinghezuo"},
+                {id: "shulkerboxr", name: "潜影盒（右）", pinyin: "qianyingheyou"},
+                {id: "barrel", name: "木桶", pinyin: "mutong"},
+                {id: "cauldron", name: "炼药锅", pinyin: "lianyaoguo"},
+                {id: "composter", name: "堆肥桶", pinyin: "duifeitong"},
+                {id: "cake", name: "蛋糕", pinyin: "dangao"},
+                {id: "beehive", name: "蜂箱", pinyin: "fengxiang"},
+                {id: "bee_nest", name: "蜂巢", pinyin: "fengchao"},
+                {id: "big_dripleaf_top", name: "大型垂滴叶", pinyin: "daxingchuidiye"},
+                {id: "carved_pumpkin", name: "雕刻南瓜", pinyin: "diaokenangua"},
+                {id: "pumpkin_lantern", name: "南瓜灯", pinyin: "nanguadeng"},
+                {id: "chorus_flower", name: "紫颂花", pinyin: "zisonghua"},
+                {id: "chorus_flower_dead", name: "枯萎紫颂花", pinyin: "kuweizisonghua"},
+                {id: "cobweb", name: "蜘蛛网", pinyin: "zhizhuwang"},
+                {id: "enchanting_table", name: "附魔台", pinyin: "fumotai"},
+                {id: "end_portal_frame", name: "末地传送门", pinyin: "modichuansongmen"},
+                {id: "furnace", name: "熔炉", pinyin: "ronglu"},
+                {id: "blast_furnace", name: "高炉", pinyin: "gaolu"},
+                {id: "smoker_front", name: "烟熏炉", pinyin: "yanxunlu"},
+                {id: "stonecutter", name: "切石机", pinyin: "qieshiji"},
+                {id: "respawn_anchor", name: "重生锚", pinyin: "chongshengmao"},
+                {id: "spawner", name: "刷怪笼", pinyin: "shuaguailong"}
             ],
             "特殊方块": [
-                "water", "lava", "ice", "glasst", "glassw", "glazedterracotta", 
-                "soulsand", "fencegatec", "fencegateo", "trapdooru", "trapdoord", 
-                "trapdoorl", "trapdoorr", "stairul", "stairur", "stairdl", "stairdr"
+                {id: "water", name: "水", pinyin: "shui"},
+                {id: "lava", name: "熔岩", pinyin: "rongyan"},
+                {id: "fire", name: "火", pinyin: "huo"},
+                {id: "unknown", name: "未知方块", pinyin: "weizhifangkuai"}
             ]
         };
         
-        // 组件名称映射
-        const componentNames = {
-            'air': '空气',
-            'sand': '沙子',
-            'smoothstone': '平滑石头',
-            'obsidian': '黑曜石',
-            'slimeblock': '黏液块',
-            'honeyblock': '蜂蜜块',
-            'ironblock': '铁块',
-            'rsblock': '红石块',
-            'duston': '红石粉(充能)',
-            'dustoff': '红石粉(未充能)',
-            'torchon': '红石火把(开启)',
-            'torchoff': '红石火把(关闭)',
-            'pistonu': '活塞(上)',
-            'pistond': '活塞(下)',
-            'pistonl': '活塞(左)',
-            'pistonr': '活塞(右)',
-            'water': '水',
-            'lava': '岩浆',
-            'ice': '冰',
-            'chest': '箱子',
-            'hopperd': '漏斗(下)',
-            'arail': '激活铁轨',
-            'prail': '动力铁轨',
-            'target': '标靶',
-            'observeru': '侦测器(上)',
-            'scaffolding': '脚手架',
-            'powderedsnow': '细雪',
-            'slabt': '台阶',
-            'soulsand': '灵魂沙'
-        };
-        
         // 全局变量
-        const imgRoot = 'https://raw.githubusercontent.com/11-90-an/rseditor/main/assets/';
-        const cols = 200, rows = 200, tileSize = 30;
-        let grid = new Array(cols * rows).fill('air');
+        const canvasSize = 64; // 64x64网格
+        const tileSize = 30; // 每个网格30像素
+        const grid = new Array(canvasSize * canvasSize).fill('air');
         let selectedComponent = 'air';
         let canvasScale = 1.0; // 初始缩放100%
         let offsetX = 0, offsetY = 0;
         let isDragging = false;
         let dragStartX = 0, dragStartY = 0;
         let images = {}; // 存储所有组件图像
-        let bgColor = [247, 249, 252]; // 默认背景色
-        let gridLineColor = [209, 219, 230]; // 默认网格线颜色
+        let canvas, ctx;
+        let hasChanges = false; // 跟踪是否有未保存的更改
+        let animationFrameId;
+        let isResourceLoaded = false;
         
-        // 初始化函数
-        function setup() {
-            // 创建画布
-            const canvas = createCanvas(windowWidth, windowHeight);
-            canvas.parent('p5-canvas');
-            canvas.mousePressed(canvasMousePressed);
+        // 初始化画布
+        function initCanvas() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
             
-            // 计算初始偏移量使画布居中
-            const canvasWidth = cols * tileSize * canvasScale;
-            const canvasHeight = rows * tileSize * canvasScale;
-            offsetX = (windowWidth - canvasWidth) / 2;
-            offsetY = (windowHeight - canvasHeight) / 2;
-            
-            // 加载组件
-            loadComponents();
+            // 设置画布尺寸为容器大小
+            resizeCanvas();
             
             // 添加事件监听器
-            setupEventListeners();
+            setupCanvasEventListeners();
             
-            // 初始化状态
-            updateStatusBar();
+            // 开始渲染循环
+            render();
         }
         
-        // 绘制函数
-        function draw() {
-            clear();
-            background(bgColor);
-            
-            // 应用缩放和平移
-            translate(offsetX, offsetY);
-            scale(canvasScale);
-            
-            // 绘制网格
-            drawGrid();
-            
-            // 绘制组件
-            drawComponents();
-        }
-        
-        // 窗口大小变化处理
-        function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
+        // 调整画布大小
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
         }
         
         // 绘制网格
         function drawGrid() {
-            stroke(gridLineColor[0], gridLineColor[1], gridLineColor[2]);
-            strokeWeight(1);
+            // 获取网格线颜色
+            const gridLineColor = getComputedStyle(document.documentElement)
+                .getPropertyValue('--grid-line').trim() || '#d1dbe6';
             
-            // 计算可视区域
-            const startX = max(0, floor((-offsetX / canvasScale) / tileSize) - 1);
-            const endX = min(cols, ceil((width - offsetX) / (tileSize * canvasScale)) + 1);
-            const startY = max(0, floor((-offsetY / canvasScale) / tileSize) - 1);
-            const endY = min(rows, ceil((height - offsetY) / (tileSize * canvasScale)) + 1);
+            // 设置网格线样式
+            ctx.strokeStyle = gridLineColor;
+            ctx.lineWidth = 1 / canvasScale; // 根据缩放调整线宽
+            ctx.globalAlpha = 0.7; // 半透明效果
+            
+            // 计算可见区域
+            const visibleStartX = Math.max(0, Math.floor((-offsetX / canvasScale) / tileSize) - 1);
+            const visibleEndX = Math.min(canvasSize, Math.ceil((canvas.width - offsetX) / (tileSize * canvasScale)) + 1);
+            const visibleStartY = Math.max(0, Math.floor((-offsetY / canvasScale) / tileSize) - 1);
+            const visibleEndY = Math.min(canvasSize, Math.ceil((canvas.height - offsetY) / (tileSize * canvasScale)) + 1);
+            
+            ctx.beginPath();
             
             // 绘制垂直线
-            for (let x = startX; x <= endX; x++) {
-                line(x * tileSize, startY * tileSize, x * tileSize, endY * tileSize);
+            for (let x = visibleStartX; x <= visibleEndX; x++) {
+                const pixelX = x * tileSize;
+                ctx.moveTo(pixelX, visibleStartY * tileSize);
+                ctx.lineTo(pixelX, visibleEndY * tileSize);
             }
             
             // 绘制水平线
-            for (let y = startY; y <= endY; y++) {
-                line(startX * tileSize, y * tileSize, endX * tileSize, y * tileSize);
+            for (let y = visibleStartY; y <= visibleEndY; y++) {
+                const pixelY = y * tileSize;
+                ctx.moveTo(visibleStartX * tileSize, pixelY);
+                ctx.lineTo(visibleEndX * tileSize, pixelY);
             }
+            
+            ctx.stroke();
+            ctx.globalAlpha = 1.0; // 恢复不透明度
         }
         
-        // 绘制组件
-        function drawComponents() {
-            noStroke();
+        // 渲染循环
+        function render() {
+            // 清除画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 计算可视区域
-            const startX = max(0, floor((-offsetX / canvasScale) / tileSize) - 1);
-            const endX = min(cols, ceil((width - offsetX) / (tileSize * canvasScale)) + 1);
-            const startY = max(0, floor((-offsetY / canvasScale) / tileSize) - 1);
-            const endY = min(rows, ceil((height - offsetY) / (tileSize * canvasScale)) + 1);
+            // 保存当前状态
+            ctx.save();
             
-            for (let y = startY; y < endY; y++) {
-                for (let x = startX; x < endX; x++) {
-                    const index = y * cols + x;
-                    if (grid[index] !== 'air') {
-                        // 如果组件图像已加载
-                        if (images[grid[index]]) {
-                            image(images[grid[index]], x * tileSize, y * tileSize, tileSize, tileSize);
-                        } else {
-                            // 如果未加载，显示占位符
-                            fill(255, 50, 50);
-                            rect(x * tileSize, y * tileSize, tileSize, tileSize);
-                        }
+            // 应用缩放和平移
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(canvasScale, canvasScale);
+            
+            // 绘制网格
+            drawGrid();
+            
+            // 计算可见区域
+            const visibleStartX = Math.max(0, Math.floor((-offsetX / canvasScale) / tileSize) - 1);
+            const visibleEndX = Math.min(canvasSize, Math.ceil((canvas.width - offsetX) / (tileSize * canvasScale)) + 1);
+            const visibleStartY = Math.max(0, Math.floor((-offsetY / canvasScale) / tileSize) - 1);
+            const visibleEndY = Math.min(canvasSize, Math.ceil((canvas.height - offsetY) / (tileSize * canvasScale)) + 1);
+            
+            // 绘制组件
+            for (let y = visibleStartY; y < visibleEndY; y++) {
+                for (let x = visibleStartX; x < visibleEndX; x++) {
+                    const index = y * canvasSize + x;
+                    if (grid[index] !== 'air' && images[grid[index]]) {
+                        const img = images[grid[index]];
+                        ctx.drawImage(img, x * tileSize, y * tileSize, tileSize, tileSize);
                     }
+                }
+            }
+            
+            // 恢复状态
+            ctx.restore();
+            
+            // 继续渲染循环
+            animationFrameId = requestAnimationFrame(render);
+        }
+        
+        // 设置画布事件监听器
+        function setupCanvasEventListeners() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleMouseWheel);
+            window.addEventListener('resize', resizeCanvas);
+        }
+        
+        // 鼠标按下事件
+        function handleMouseDown(e) {
+            // 中键或右键拖动
+            if (e.button === 1 || e.button === 2) {
+                isDragging = true;
+                dragStartX = e.clientX - offsetX;
+                dragStartY = e.clientY - offsetY;
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault(); // 防止默认行为
+                return;
+            }
+            
+            // 左键放置/移除组件
+            if (e.button === 0) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 计算网格坐标
+                const gridX = Math.floor((x - offsetX) / (tileSize * canvasScale));
+                const gridY = Math.floor((y - offsetY) / (tileSize * canvasScale));
+                
+                // 检查是否在网格内
+                if (gridX >= 0 && gridX < canvasSize && gridY >= 0 && gridY < canvasSize) {
+                    const index = gridY * canvasSize + gridX;
+                    
+                    // 放置或移除组件
+                    if (grid[index] === selectedComponent) {
+                        grid[index] = 'air'; // 移除
+                    } else {
+                        grid[index] = selectedComponent; // 放置
+                        hasChanges = true;
+                    }
+                    
+                    // 更新状态栏
+                    updateStatusBar();
                 }
             }
         }
         
-        // 加载组件
+        // 鼠标移动事件
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 计算网格坐标
+            const gridX = Math.floor((x - offsetX) / (tileSize * canvasScale));
+            const gridY = Math.floor((y - offsetY) / (tileSize * canvasScale));
+            
+            // 更新光标位置显示
+            if (gridX >= 0 && gridX < canvasSize && gridY >= 0 && gridY < canvasSize) {
+                document.querySelector('#cursor-position span').textContent = 
+                    `坐标: ${gridX}, ${gridY}`;
+            } else {
+                document.querySelector('#cursor-position span').textContent = `坐标: 0, 0`;
+            }
+            
+            // 处理拖动
+            if (isDragging) {
+                offsetX = e.clientX - dragStartX;
+                offsetY = e.clientY - dragStartY;
+            }
+        }
+        
+        // 鼠标释放事件
+        function handleMouseUp(e) {
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        }
+        
+        // 鼠标滚轮事件（缩放）
+        function handleMouseWheel(e) {
+            e.preventDefault();
+            
+            const zoomAmount = e.deltaY > 0 ? -0.1 : 0.1;
+            zoomCanvas(zoomAmount, e.clientX, e.clientY);
+        }
+        
+        // 缩放画布
+        function zoomCanvas(zoomAmount, centerX, centerY) {
+            const oldScale = canvasScale;
+            canvasScale = Math.max(0.1, Math.min(2.0, canvasScale + zoomAmount));
+            
+            // 如果没有指定中心点，使用画布中心
+            const rect = canvas.getBoundingClientRect();
+            if (!centerX) centerX = rect.left + canvas.width / 2;
+            if (!centerY) centerY = rect.top + canvas.height / 2;
+            
+            // 计算相对于画布的位置
+            const canvasX = centerX - rect.left;
+            const canvasY = centerY - rect.top;
+            
+            // 计算缩放前中心点的网格坐标
+            const gridCenterX = (canvasX - offsetX) / (tileSize * oldScale);
+            const gridCenterY = (canvasY - offsetY) / (tileSize * oldScale);
+            
+            // 计算缩放后中心点应该保持在同一位置
+            offsetX = canvasX - gridCenterX * tileSize * canvasScale;
+            offsetY = canvasY - gridCenterY * tileSize * canvasScale;
+            
+            updateZoomDisplay();
+        }
+        
+        // 重置画布位置和缩放
+        function resetCanvasPosition() {
+            canvasScale = 1.0;
+            
+            // 计算初始偏移量使画布居中
+            const container = document.getElementById('canvas-container');
+            const canvasWidth = canvasSize * tileSize * canvasScale;
+            const canvasHeight = canvasSize * tileSize * canvasScale;
+            offsetX = (container.clientWidth - canvasWidth) / 2;
+            offsetY = (container.clientHeight - canvasHeight) / 2;
+            
+            updateZoomDisplay();
+        }
+        
+        // 更新缩放显示
+        function updateZoomDisplay() {
+            document.querySelector('#canvas-scale span').textContent = 
+                `${Math.round(canvasScale * 100)}%`;
+        }
+        
+        // 加载组件面板
         function loadComponents() {
             const componentsList = document.getElementById('components-list');
             componentsList.innerHTML = '';
@@ -756,6 +1559,7 @@
             for (const [category, comps] of Object.entries(components)) {
                 const categoryDiv = document.createElement('div');
                 categoryDiv.className = 'category';
+                categoryDiv.dataset.category = category;
                 
                 // 分类标题
                 const title = document.createElement('h3');
@@ -776,16 +1580,25 @@
                 gridDiv.className = 'components-grid';
                 
                 // 添加组件
-                comps.forEach(comp => {
+                comps.forEach(compData => {
                     const compDiv = document.createElement('div');
                     compDiv.className = 'component';
-                    compDiv.dataset.name = comp;
-                    compDiv.innerHTML = `<img src="${imgRoot}${comp}.webp" alt="${comp}">`;
+                    compDiv.dataset.id = compData.id;
+                    compDiv.dataset.name = compData.name;
+                    compDiv.dataset.pinyin = compData.pinyin;
+                    
+                    // 尝试使用本地资源
+                    if (images[compData.id]) {
+                        compDiv.innerHTML = `<img src="${images[compData.id].src}" alt="${compData.id}">`;
+                    } else {
+                        // 如果资源未加载，显示占位符
+                        compDiv.innerHTML = `<div style="width:30px;height:30px;background:#eee;display:flex;align-items:center;justify-content:center;color:#888;font-size:10px;">${compData.id}</div>`;
+                    }
                     
                     // 添加点击事件
                     compDiv.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        selectComponent(comp);
+                        selectComponent(compData.id);
                     });
                     
                     gridDiv.appendChild(compDiv);
@@ -800,70 +1613,28 @@
         }
         
         // 选择组件
-        function selectComponent(name) {
-            selectedComponent = name;
+        function selectComponent(id) {
+            selectedComponent = id;
             
             // 更新UI
             document.querySelectorAll('.component').forEach(comp => {
-                comp.classList.toggle('selected', comp.dataset.name === name);
+                comp.classList.toggle('selected', comp.dataset.id === id);
             });
             
             // 更新状态栏
-            document.querySelector('#current-component span').textContent = 
-                componentNames[name] || name;
+            const compData = getAllComponents().find(c => c.id === id);
+            if (compData) {
+                document.querySelector('#current-component span').textContent = compData.name;
+            } else {
+                document.querySelector('#current-component span').textContent = id;
+            }
             
             updateStatusBar();
         }
         
-        // 画布鼠标事件处理
-        function canvasMousePressed(event) {
-            // 中键拖动处理
-            if (event.button === 1) { // 中键
-                isDragging = true;
-                dragStartX = mouseX - offsetX;
-                dragStartY = mouseY - offsetY;
-                return false; // 防止默认行为
-            }
-            
-            // 计算网格坐标
-            const gridX = Math.floor((mouseX - offsetX) / (tileSize * canvasScale));
-            const gridY = Math.floor((mouseY - offsetY) / (tileSize * canvasScale));
-            
-            // 检查是否在网格内
-            if (gridX >= 0 && gridX < cols && gridY >= 0 && gridY < rows) {
-                const index = gridY * cols + gridX;
-                
-                // 放置或移除组件
-                if (grid[index] === selectedComponent) {
-                    grid[index] = 'air'; // 移除
-                } else {
-                    grid[index] = selectedComponent; // 放置
-                }
-                
-                // 更新状态栏
-                updateStatusBar();
-            }
-            
-            return false;
-        }
-        
-        // 鼠标拖动处理
-        function mouseDragged() {
-            if (isDragging) {
-                offsetX = mouseX - dragStartX;
-                offsetY = mouseY - dragStartY;
-            }
-        }
-        
-        function mouseReleased() {
-            isDragging = false;
-        }
-        
-        // 更新缩放显示
-        function updateZoomDisplay() {
-            document.querySelector('#canvas-scale span').textContent = 
-                `${Math.round(canvasScale * 100)}%`;
-            document.querySelector('#zoom-reset span').textContent = `${Math.round(canvasScale * 100)}%`;
+        // 获取所有组件（扁平化）
+        function getAllComponents() {
+            return Object.values(components).flat();
         }
         
         // 更新状态栏
@@ -871,25 +1642,9 @@
             // 计算已放置组件数量
             const placedCount = grid.filter(comp => comp !== 'air').length;
             document.querySelector('#block-count span').textContent = `已放置: ${placedCount} 个组件`;
-            
-            // 更新鼠标位置
-            updateCursorPosition();
         }
         
-        // 更新光标位置
-        function updateCursorPosition() {
-            const gridX = Math.floor((mouseX - offsetX) / (tileSize * canvasScale));
-            const gridY = Math.floor((mouseY - offsetY) / (tileSize * canvasScale));
-            
-            if (gridX >= 0 && gridX < cols && gridY >= 0 && gridY < rows) {
-                document.querySelector('#cursor-position span').textContent = 
-                    `坐标: ${gridX}, ${gridY}`;
-            } else {
-                document.querySelector('#cursor-position span').textContent = `坐标: 0, 0`;
-            }
-        }
-        
-        // 设置昼夜模式切换
+        // 设置主题切换
         function setupDayNightToggle() {
             const themeToggle = document.getElementById('theme-toggle');
             const themeIcon = themeToggle.querySelector('i');
@@ -906,40 +1661,117 @@
                     // 夜间模式
                     document.body.classList.add('theme-dark');
                     themeIcon.className = 'fas fa-sun';
-                    themeText.textContent = '日间模式';
+                    themeText.textContent = '主题';
                     themeDisplay.textContent = '夜间模式';
-                    bgColor = [45, 52, 64]; // 深灰色背景
-                    gridLineColor = [90, 100, 120]; // 深灰色网格线
+                    
+                    // 保存到本地存储
+                    localStorage.setItem('theme', 'dark');
                 } else {
                     // 日间模式
                     document.body.classList.remove('theme-dark');
                     themeIcon.className = 'fas fa-moon';
-                    themeText.textContent = '夜间模式';
+                    themeText.textContent = '主题';
                     themeDisplay.textContent = '日间模式';
-                    bgColor = [247, 249, 252]; // 浅色背景
-                    gridLineColor = [209, 219, 230]; // 浅色网格线
+                    
+                    // 保存到本地存储
+                    localStorage.setItem('theme', 'light');
                 }
             });
+        }
+        
+        // 从本地存储加载主题
+        function loadThemeFromStorage() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = themeToggle.querySelector('i');
+            const themeText = themeToggle.querySelector('span');
+            const themeDisplay = document.querySelector('#theme-display span');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('theme-dark');
+                themeIcon.className = 'fas fa-sun';
+                themeText.textContent = '主题';
+                themeDisplay.textContent = '夜间模式';
+            } else {
+                document.body.classList.remove('theme-dark');
+                themeIcon.className = 'fas fa-moon';
+                themeText.textContent = '主题';
+                themeDisplay.textContent = '日间模式';
+            }
         }
         
         // 设置缩放控制
         function setupZoomControls() {
             document.getElementById('zoom-out').addEventListener('click', (e) => {
                 e.stopPropagation();
-                canvasScale = Math.max(0.1, canvasScale - 0.1);
-                updateZoomDisplay();
+                zoomCanvas(-0.1);
             });
             
             document.getElementById('zoom-in').addEventListener('click', (e) => {
                 e.stopPropagation();
-                canvasScale = Math.min(2.0, canvasScale + 0.1);
-                updateZoomDisplay();
+                zoomCanvas(0.1);
             });
             
             document.getElementById('zoom-reset').addEventListener('click', (e) => {
                 e.stopPropagation();
-                canvasScale = 1.0;
-                updateZoomDisplay();
+                resetCanvasPosition();
+            });
+        }
+        
+        // 组件搜索功能（支持中文、拼音和英文）
+        function filterComponents() {
+            const searchTerm = document.getElementById('component-search').value.trim().toLowerCase();
+            const categories = document.querySelectorAll('.category');
+            const allComponents = getAllComponents();
+            let matchCount = 0;
+            
+            // 如果没有搜索词，显示所有组件
+            if (!searchTerm) {
+                categories.forEach(category => {
+                    category.style.display = 'block';
+                    const components = category.querySelectorAll('.component');
+                    components.forEach(comp => {
+                        comp.style.display = 'flex';
+                    });
+                });
+            }
+            
+            // 遍历所有分类
+            categories.forEach(category => {
+                const comps = category.querySelectorAll('.component');
+                let hasVisible = false;
+                
+                // 遍历该分类下的所有组件
+                comps.forEach(comp => {
+                    const id = comp.dataset.id;
+                    const name = comp.dataset.name;
+                    const pinyin = comp.dataset.pinyin;
+                    
+                    // 检查匹配条件：ID、中文名称、完整拼音、拼音首字母
+                    const matchId = id.toLowerCase().includes(searchTerm);
+                    const matchName = name.toLowerCase().includes(searchTerm);
+                    const matchPinyin = pinyin.toLowerCase().includes(searchTerm);
+                    
+                    // 生成拼音首字母
+                    const pinyinInitials = pinyin
+                        .split('')
+                        .filter(char => /[a-z]/.test(char) && !/[aeiouv]/.test(char))
+                        .join('');
+                    
+                    const matchInitials = pinyinInitials.toLowerCase().includes(searchTerm);
+                    
+                    // 检查是否匹配
+                    if (matchId || matchName || matchPinyin || matchInitials) {
+                        comp.style.display = 'flex';
+                        hasVisible = true;
+                        matchCount++;
+                    } else {
+                        comp.style.display = 'none';
+                    }
+                });
+                
+                // 根据是否有可见组件显示/隐藏分类
+                category.style.display = hasVisible ? 'block' : 'none';
             });
         }
         
@@ -948,15 +1780,19 @@
             // 按钮事件
             document.getElementById('clear-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                clearCanvas();
+                openClearConfirmModal();
             });
             document.getElementById('save-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                saveDesign();
+                openSaveModal();
+            });
+            document.getElementById('load-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openLoadModal();
             });
             document.getElementById('help-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                showHelp();
+                openHelpModal();
             });
             
             // 搜索功能
@@ -965,65 +1801,337 @@
                 filterComponents();
             });
             
-            // 全局鼠标事件
-            document.addEventListener('mouseup', mouseReleased);
-            document.addEventListener('mousemove', mouseDragged);
-            document.addEventListener('mousemove', updateCursorPosition);
-            
             // 缩放控制
             setupZoomControls();
             
-            // 昼夜模式切换
+            // 主题切换
             setupDayNightToggle();
+            
+            // 模态框关闭按钮
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', closeAllModals);
+            });
+            
+            // 点击模态框外部关闭
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeAllModals();
+                    }
+                });
+            });
+            
+            // 保存按钮
+            document.getElementById('confirm-save').addEventListener('click', saveDesign);
+            
+            // 导入按钮
+            document.getElementById('confirm-load').addEventListener('click', loadDesign);
+            
+            // 清空确认按钮
+            document.getElementById('confirm-clear').addEventListener('click', clearCanvas);
+            
+            // 重新加载按钮
+            document.getElementById('reload-btn').addEventListener('click', () => {
+                location.reload();
+            });
+            
+            // 文件拖放功能
+            const fileDropArea = document.getElementById('file-drop-area');
+            const fileInput = document.getElementById('load-file');
+            
+            fileDropArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    document.getElementById('load-status').innerHTML = 
+                        `<i class="fas fa-check-circle"></i> 已选择文件: ${fileInput.files[0].name}`;
+                }
+            });
+            
+            // 文件拖放事件
+            fileDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.add('drag-over');
+            });
+            
+            fileDropArea.addEventListener('dragleave', () => {
+                fileDropArea.classList.remove('drag-over');
+            });
+            
+            fileDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.remove('drag-over');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    document.getElementById('load-status').innerHTML = 
+                        `<i class="fas fa-check-circle"></i> 已选择文件: ${fileInput.files[0].name}`;
+                }
+            });
+            
+            // 阻止右键菜单
+            document.addEventListener('contextmenu', (e) => {
+                if (e.target.id === 'canvas') {
+                    e.preventDefault();
+                }
+            });
+        }
+        
+        // 打开保存模态框
+        function openSaveModal() {
+            document.getElementById('save-modal').classList.add('show');
+            document.getElementById('save-modal').style.display = 'flex';
+        }
+        
+        // 打开导入模态框
+        function openLoadModal() {
+            document.getElementById('load-modal').classList.add('show');
+            document.getElementById('load-modal').style.display = 'flex';
+            document.getElementById('load-status').innerHTML = 
+                '<i class="fas fa-info-circle"></i> 请选择或拖放JSON设计文件';
+        }
+        
+        // 打开清空确认模态框
+        function openClearConfirmModal() {
+            document.getElementById('clear-confirm-modal').classList.add('show');
+            document.getElementById('clear-confirm-modal').style.display = 'flex';
+        }
+        
+        // 打开帮助模态框
+        function openHelpModal() {
+            document.getElementById('help-modal').classList.add('show');
+            document.getElementById('help-modal').style.display = 'flex';
+        }
+        
+        // 关闭所有模态框
+        function closeAllModals() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            });
         }
         
         // 清空画布
         function clearCanvas() {
-            if (confirm('确定要清空整个画布吗？')) {
-                grid.fill('air');
-                updateStatusBar();
-            }
+            grid.fill('air');
+            updateStatusBar();
+            hasChanges = true;
+            closeAllModals();
         }
         
         // 保存设计
         function saveDesign() {
-            alert('开发中...');
+            const designName = document.getElementById('design-name').value.trim() || '未命名设计';
+            const designDescription = document.getElementById('design-description').value.trim();
+            
+            // 创建设计对象
+            const designData = {
+                name: designName,
+                description: designDescription,
+                grid: grid,
+                timestamp: new Date().toISOString(),
+                scale: canvasScale,
+                offsetX: offsetX,
+                offsetY: offsetY
+            };
+            
+            // 转换为JSON
+            const jsonData = JSON.stringify(designData);
+            
+            // 创建Blob对象
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            
+            // 创建下载链接
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${designName.replace(/\s+/g, '_')}_红石设计.json`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            // 关闭模态框
+            closeAllModals();
+            
+            // 重置表单
+            document.getElementById('design-name').value = '';
+            document.getElementById('design-description').value = '';
+            
+            // 标记为已保存
+            hasChanges = false;
         }
         
-        // 显示帮助
-        function showHelp() {
-            alert('红石编辑器使用说明：\n\n1. 从左侧面板选择组件\n2. 在画布上点击放置组件\n3. 再次点击同一位置可移除组件\n4. 使用鼠标中键拖动画布\n5. 使用底部按钮控制缩放\n6. 清空按钮可重置画布\n7. 右上角可切换昼夜模式');
-        }
-        
-        // 组件搜索
-        function filterComponents() {
-            const searchTerm = document.getElementById('component-search').value.toLowerCase();
-            document.querySelectorAll('.component').forEach(comp => {
-                const compName = comp.dataset.name.toLowerCase();
-                comp.style.display = compName.includes(searchTerm) ? 'flex' : 'none';
-            });
+        // 导入设计
+        function loadDesign() {
+            const fileInput = document.getElementById('load-file');
+            const statusElement = document.getElementById('load-status');
+            
+            if (!fileInput.files.length) {
+                statusElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> 请选择设计文件';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const designData = JSON.parse(e.target.result);
+                    
+                    // 验证数据
+                    if (!designData.grid || !Array.isArray(designData.grid)) {
+                        throw new Error('无效的设计文件格式');
+                    }
+                    
+                    // 应用设计
+                    designData.grid.forEach((comp, index) => {
+                        if (index < grid.length) {
+                            grid[index] = comp;
+                        }
+                    });
+                    
+                    if (designData.scale) canvasScale = designData.scale;
+                    if (designData.offsetX) offsetX = designData.offsetX;
+                    if (designData.offsetY) offsetY = designData.offsetY;
+                    
+                    // 更新状态
+                    updateStatusBar();
+                    updateZoomDisplay();
+                    
+                    // 关闭模态框
+                    closeAllModals();
+                    
+                    // 标记为已保存
+                    hasChanges = false;
+                    
+                    statusElement.innerHTML = '<i class="fas fa-check-circle"></i> 设计导入成功！';
+                } catch (error) {
+                    statusElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> 错误: ${error.message}`;
+                }
+            };
+            
+            reader.onerror = function() {
+                statusElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> 读取文件时出错';
+            };
+            
+            reader.readAsText(file);
         }
         
         // 预加载所有组件图片
-        function preload() {
+        function preloadResources() {
             // 创建所有组件名称的数组
-            const allComponents = [];
-            for (const comps of Object.values(components)) {
-                allComponents.push(...comps);
+            const allComponents = getAllComponents();
+            
+            // 预加载进度跟踪
+            const progressBar = document.getElementById('progress-bar');
+            const loaderText = document.querySelector('.loader-text');
+            let loadedCount = 0;
+            const totalCount = allComponents.length;
+            
+            // 更新进度条
+            function updateProgress() {
+                loadedCount++;
+                const progress = (loadedCount / totalCount) * 100;
+                progressBar.style.width = `${progress}%`;
+                loaderText.textContent = `正在加载红石组件资源... (${loadedCount}/${totalCount})`;
             }
             
             // 预加载所有图片
             allComponents.forEach(comp => {
-                images[comp] = loadImage(`${imgRoot}${comp}.webp`);
+                const img = new Image();
+                img.onload = () => {
+                    images[comp.id] = img;
+                    updateProgress();
+                    
+                    // 当所有资源加载完成
+                    if (loadedCount === totalCount) {
+                        isResourceLoaded = true;
+                        setTimeout(() => {
+                            document.getElementById('resource-loader').style.opacity = '0';
+                            setTimeout(() => {
+                                document.getElementById('resource-loader').style.display = 'none';
+                                // 加载组件面板
+                                loadComponents();
+                                // 初始化画布
+                                initCanvas();
+                            }, 500);
+                        }, 300);
+                    }
+                };
+                
+                img.onerror = () => {
+                    // 处理资源加载错误
+                    console.error(`无法加载资源: assets/${comp.id}.webp`);
+                    images[comp.id] = null;
+                    updateProgress();
+                    
+                    // 如果所有资源加载完成但有错误
+                    if (loadedCount === totalCount) {
+                        isResourceLoaded = true;
+                        // 检查是否有资源缺失
+                        const missingResources = allComponents.filter(c => !images[c.id]);
+                        if (missingResources.length > 0) {
+                            document.getElementById('resource-error').style.display = 'flex';
+                            document.getElementById('resource-loader').style.display = 'none';
+                        } else {
+                            setTimeout(() => {
+                                document.getElementById('resource-loader').style.opacity = '0';
+                                setTimeout(() => {
+                                    document.getElementById('resource-loader').style.display = 'none';
+                                    loadComponents();
+                                    initCanvas();
+                                }, 500);
+                            }, 300);
+                        }
+                    }
+                };
+                
+                // 尝试加载本地资源
+                img.src = `assets/${comp.id}.webp`;
             });
         }
         
-        // 初始化p5
-        new p5();
-        window.preload = preload;
-        window.setup = setup;
-        window.draw = draw;
-        window.windowResized = windowResized;
+        // 处理页面关闭事件
+        function handleBeforeUnload(e) {
+            if (hasChanges) {
+                const confirmationMessage = '您有未保存的更改，确定要离开吗？';
+                e.returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
+        }
+        
+        // 初始化
+        function init() {
+            // 检查本地存储中的主题设置
+            loadThemeFromStorage();
+            
+            // 设置事件监听器
+            setupEventListeners();
+            
+            // 预加载资源
+            preloadResources();
+            
+            // 监听窗口关闭事件
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            
+            // 初始化状态栏
+            updateStatusBar();
+            
+            // 初始重置画布位置
+            resetCanvasPosition();
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
