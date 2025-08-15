@@ -78,8 +78,8 @@
             font-size: 1em;
             min-height: 1.3em;
         }
-        /* 弹窗样式 */
-        .gh-modal-bg {
+        /* 全屏弹窗样式 */
+        .gh-fullscreen-bg {
             position: fixed;
             top:0; left:0; right:0; bottom:0;
             background: rgba(36,41,46,0.55);
@@ -88,87 +88,48 @@
             align-items: center;
             justify-content: center;
         }
-        .gh-modal {
+        .gh-fullscreen {
             background: #fff;
             box-shadow: 0 4px 32px #24292e66;
             border-radius: 12px;
-            max-width: 96vw;
-            max-height: 96vh;
+            max-width: 98vw;
+            max-height: 98vh;
             min-width: 180px;
             min-height: 36px;
-            padding: 16px 10px 16px 10px;
+            padding: 24px 10px 24px 10px;
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             overflow: auto;
         }
-        .gh-modal-close {
+        .gh-fullscreen-close {
             position: absolute;
-            right: 12px;
-            top: 10px;
-            font-size: 1.7em;
+            right: 18px;
+            top: 16px;
+            font-size: 1.8em;
             color: #24292e;
             background: none;
             border: none;
             cursor: pointer;
             z-index: 2;
         }
-        .gh-modal img, .gh-modal video {
-            max-width: 93vw;
+        .gh-fullscreen img, .gh-fullscreen video {
+            max-width: 95vw;
             max-height: 80vh;
             border-radius: 8px;
             box-shadow: 0 2px 8px #d0d7de33;
             display: block;
+            margin-bottom: 12px;
         }
-        .gh-modal a {
-            font-size: 1.1em;
-            color: #0969da;
-            word-break: break-all;
-        }
-        .gh-edit-page-bg {
-            position: fixed;
-            top:0; left:0; right:0; bottom:0;
-            background: rgba(36,41,46,0.17);
-            z-index: 9999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .gh-edit-page {
-            background: #fff;
-            box-shadow: 0 4px 32px #24292e44;
-            border-radius: 12px;
-            max-width: 98vw;
-            max-height: 98vh;
-            min-width: 220px;
-            min-height: 42px;
-            padding: 24px 18px 20px 18px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            overflow: auto;
-        }
-        .gh-edit-close {
-            position: absolute;
-            right: 14px;
-            top: 10px;
-            font-size: 1.6em;
-            color: #24292e;
-            background: none;
-            border: none;
-            cursor: pointer;
-            z-index: 2;
-        }
-        .gh-edit-filename {
+        .gh-fullscreen-filename {
             font-size: 1.09em;
             color: #57606a;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-weight: bold;
             word-break: break-all;
         }
-        .gh-edit-content {
+        .gh-fullscreen-content {
             width: 100%;
             min-height: 180px;
             font-size: 1.07em;
@@ -180,17 +141,21 @@
             resize: vertical;
             background: #f6f8fa;
         }
-        .gh-edit-actions button {
+        .gh-fullscreen-actions button {
             margin-right: 10px;
             margin-bottom: 6px;
+        }
+        .gh-fullscreen a {
+            font-size: 1.1em;
+            color: #0969da;
+            word-break: break-all;
         }
         @media (max-width: 600px) {
             .container { padding: 10px; }
             .gh-header { padding: 10px; font-size: 1.15em; }
-            .gh-modal { padding: 5vw 2vw 5vw 2vw; }
-            .gh-modal img, .gh-modal video { max-width: 96vw; max-height: 62vh; }
-            .gh-edit-page { padding: 6vw 3vw 6vw 3vw; }
-            .gh-edit-content { min-height: 100px; }
+            .gh-fullscreen { padding: 6vw 2vw 6vw 2vw; }
+            .gh-fullscreen img, .gh-fullscreen video { max-width: 98vw; max-height: 62vh; }
+            .gh-fullscreen-content { min-height: 100px; }
         }
     </style>
 </head>
@@ -215,23 +180,11 @@
         <div class="gh-status" id="ghStatus"></div>
         <input type="file" id="ghUploadInput" style="display:none;" />
     </div>
-    <!-- 弹窗预览层 -->
-    <div class="gh-modal-bg" id="ghModalBg">
-        <div class="gh-modal" id="ghModal">
-            <button class="gh-modal-close" onclick="closeModal()" title="关闭预览">&times;</button>
-            <div id="ghModalContent"></div>
-        </div>
-    </div>
-    <!-- 弹窗编辑页面 -->
-    <div class="gh-edit-page-bg" id="ghEditBg">
-        <div class="gh-edit-page" id="ghEditPage">
-            <button class="gh-edit-close" onclick="closeEditPage()" title="关闭编辑">&times;</button>
-            <div class="gh-edit-filename" id="ghEditFilename"></div>
-            <textarea class="gh-edit-content" id="ghEditContent"></textarea>
-            <div class="gh-edit-actions">
-                <button onclick="saveEditFile()" class="save-btn">保存</button>
-                <button onclick="closeEditPage()" class="del-btn">取消</button>
-            </div>
+    <!-- 全屏弹窗层 -->
+    <div class="gh-fullscreen-bg" id="ghFullBg">
+        <div class="gh-fullscreen" id="ghFullScreen">
+            <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
+            <div id="ghFullContent"></div>
         </div>
     </div>
     <script>
@@ -301,12 +254,11 @@
             html += `<tr>
                 <td>${f.type === "dir" ? "📁" : "📄"}</td>
                 <td>
-                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openEditPage('${f.path}','${f.sha}')`}">${f.name}</a>
+                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a>
                 </td>
                 <td>
                 ${f.type === "file" ? `
                     <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
-                    <button onclick="previewFile('${f.path}')" class="save-btn">预览</button>
                 ` : ""}
                 </td>
             </tr>`;
@@ -321,37 +273,60 @@
         loadFiles(curPath);
     }
 
-    // 单独编辑页面弹窗
-    window.openEditPage = async function(path, sha) {
+    // 全屏弹窗页面（预览或编辑）
+    window.openFullScreen = async function(path, sha) {
         editingFile = path;
         fileSha = sha;
-        document.getElementById("ghEditBg").style.display = "flex";
-        document.getElementById("ghEditFilename").textContent = path;
-        document.getElementById("ghEditContent").value = "正在加载内容...";
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-            document.getElementById("ghEditContent").value = "(无法读取文件内容)";
-            return;
+        document.getElementById("ghFullBg").style.display = "flex";
+        const ext = path.split('.').pop().toLowerCase();
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
+        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
+            contentHtml += `<img src="${rawUrl}" alt="${path}">`;
+        } else if (["mp4","webm","ogg"].includes(ext)) {
+            contentHtml += `<video src="${rawUrl}" controls></video>`;
+        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+            // 文本类文件编辑
+            contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>
+            <div class="gh-fullscreen-actions">
+                <button onclick="saveFullScreenEdit()" class="save-btn">保存</button>
+                <button onclick="closeFullScreen()" class="del-btn">取消</button>
+            </div>`;
+        } else {
+            // 其它文件仅下载
+            contentHtml += `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
         }
-        const data = await res.json();
-        let content = atob(data.content.replace(/\n/g, ""));
-        document.getElementById("ghEditContent").value = content;
+        document.getElementById("ghFullContent").innerHTML = contentHtml;
+        // 加载文本内容
+        if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+            document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
+                return;
+            }
+            const data = await res.json();
+            let content = atob(data.content.replace(/\n/g, ""));
+            document.getElementById("ghFullscreenEdit").value = content;
+        }
     }
-    window.closeEditPage = function() {
+    window.closeFullScreen = function() {
         editingFile = null;
         fileSha = "";
-        document.getElementById("ghEditBg").style.display = "none";
+        document.getElementById("ghFullBg").style.display = "none";
+        document.getElementById("ghFullContent").innerHTML = "";
     }
-    window.saveEditFile = async function() {
+    window.saveFullScreenEdit = async function() {
         if (!editingFile) return;
+        const val = document.getElementById("ghFullscreenEdit").value;
         token = localStorage.getItem("gh_token") || "";
         if (!token) {
             token = await getFullToken();
             localStorage.setItem("gh_token", token);
         }
         showStatus("正在保存...", "#0969da");
-        const content = btoa(unescape(encodeURIComponent(document.getElementById("ghEditContent").value)));
+        const content = btoa(unescape(encodeURIComponent(val)));
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
         const res = await fetch(url, {
             method: "PUT",
@@ -369,7 +344,7 @@
         if (res.ok) {
             showStatus("保存成功！");
             loadFiles(curPath);
-            window.closeEditPage();
+            window.closeFullScreen();
         } else {
             showStatus("保存失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -549,32 +524,94 @@
         }
     }
 
-    // 弹窗预览
-    window.previewFile = async function(path) {
-        const modalBg = document.getElementById("ghModalBg");
-        const modalContent = document.getElementById("ghModalContent");
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
-        const ext = path.split('.').pop().toLowerCase();
-        let contentHtml = "";
-        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
-            contentHtml = `<img src="${rawUrl}" alt="${path}">`;
-        } else if (["mp4","webm","ogg"].includes(ext)) {
-            contentHtml = `<video src="${rawUrl}" controls></video>`;
-        } else {
-            contentHtml = `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
-        }
-        modalContent.innerHTML = contentHtml;
-        modalBg.style.display = "flex";
+    loadFiles();
+
+    // 全屏弹窗关闭
+    window.closeFullScreen = function() {
+        editingFile = null;
+        fileSha = "";
+        document.getElementById("ghFullBg").style.display = "none";
+        document.getElementById("ghFullContent").innerHTML = "";
     }
-    window.closeModal = function() {
-        document.getElementById("ghModalBg").style.display = "none";
-        document.getElementById("ghModalContent").innerHTML = "";
-    }
-    document.getElementById("ghModalBg").onclick = function(e) {
-        if (e.target === this) closeModal();
+    document.getElementById("ghFullBg").onclick = function(e) {
+        if (e.target === this) closeFullScreen();
     }
 
-    loadFiles();
+    // 全屏弹窗界面（文件名点击触发，支持文本编辑和图片/视频预览）
+    window.openFullScreen = async function(path, sha) {
+        editingFile = path;
+        fileSha = sha;
+        document.getElementById("ghFullBg").style.display = "flex";
+        const ext = path.split('.').pop().toLowerCase();
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
+        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
+            contentHtml += `<img src="${rawUrl}" alt="${path}">`;
+        } else if (["mp4","webm","ogg"].includes(ext)) {
+            contentHtml += `<video src="${rawUrl}" controls></video>`;
+        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+            // 文本类文件编辑
+            contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>
+            <div class="gh-fullscreen-actions">
+                <button onclick="saveFullScreenEdit()" class="save-btn">保存</button>
+                <button onclick="closeFullScreen()" class="del-btn">取消</button>
+            </div>`;
+        } else {
+            // 其它文件仅下载
+            contentHtml += `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
+        }
+        document.getElementById("ghFullContent").innerHTML = contentHtml;
+        // 加载文本内容
+        if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+            document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
+                return;
+            }
+            const data = await res.json();
+            let content = atob(data.content.replace(/\n/g, ""));
+            document.getElementById("ghFullscreenEdit").value = content;
+        }
+    }
+    window.saveFullScreenEdit = async function() {
+        if (!editingFile) return;
+        const val = document.getElementById("ghFullscreenEdit").value;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在保存...", "#0969da");
+        const content = btoa(unescape(encodeURIComponent(val)));
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Update ${editingFile} via manager.html`,
+                content: content,
+                sha: fileSha
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("保存成功！");
+            loadFiles(curPath);
+            window.closeFullScreen();
+        } else {
+            showStatus("保存失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
     </script>
 </body>
 </html>
