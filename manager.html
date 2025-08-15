@@ -66,12 +66,6 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
-        .gh-file-content {
-            width: 100%;
-            height: 250px;
-            margin-top: 12px;
-            font-size: 1.07em;
-        }
         .gh-status {
             margin-top: 14px;
             color: #238636;
@@ -85,18 +79,20 @@
             background: rgba(36,41,46,0.55);
             z-index: 9999;
             display: none;
-            align-items: center;
-            justify-content: center;
+            align-items: stretch;
+            justify-content: stretch;
+            width: 100vw;
+            height: 100vh;
         }
         .gh-fullscreen {
             background: #fff;
             box-shadow: 0 4px 32px #24292e66;
-            border-radius: 12px;
-            max-width: 98vw;
-            max-height: 98vh;
+            border-radius: 0;
+            width: 100vw;
+            height: 100vh;
             min-width: 180px;
             min-height: 36px;
-            padding: 24px 10px 24px 10px;
+            padding: 34px 0 24px 0;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -105,9 +101,9 @@
         }
         .gh-fullscreen-close {
             position: absolute;
-            right: 18px;
-            top: 16px;
-            font-size: 1.8em;
+            right: 26px;
+            top: 18px;
+            font-size: 2.4em;
             color: #24292e;
             background: none;
             border: none;
@@ -115,22 +111,26 @@
             z-index: 2;
         }
         .gh-fullscreen img, .gh-fullscreen video {
-            max-width: 95vw;
-            max-height: 80vh;
+            max-width: 92vw;
+            max-height: 74vh;
             border-radius: 8px;
             box-shadow: 0 2px 8px #d0d7de33;
             display: block;
             margin-bottom: 12px;
+            margin-top: 12px;
         }
         .gh-fullscreen-filename {
-            font-size: 1.09em;
+            font-size: 1.12em;
             color: #57606a;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             font-weight: bold;
             word-break: break-all;
         }
+        .gh-fullscreen-rename {
+            margin-bottom: 18px;
+        }
         .gh-fullscreen-content {
-            width: 100%;
+            width: 94vw;
             min-height: 180px;
             font-size: 1.07em;
             margin-bottom: 18px;
@@ -153,8 +153,8 @@
         @media (max-width: 600px) {
             .container { padding: 10px; }
             .gh-header { padding: 10px; font-size: 1.15em; }
-            .gh-fullscreen { padding: 6vw 2vw 6vw 2vw; }
-            .gh-fullscreen img, .gh-fullscreen video { max-width: 98vw; max-height: 62vh; }
+            .gh-fullscreen { padding: 4vw 0 4vw 0; }
+            .gh-fullscreen img, .gh-fullscreen video { max-width: 98vw; max-height: 60vh; }
             .gh-fullscreen-content { min-height: 100px; }
         }
     </style>
@@ -193,6 +193,9 @@
     let curPath = ""; // 当前路径
     let editingFile = null;
     let fileSha = "";
+    let lastFullScreenType = ""; // "text" | "img" | "video" | "other"
+    let lastFullScreenPath = "";
+    let lastFullScreenContent = "";
 
     // token相关
     async function fetchTokenSuffix() {
@@ -273,49 +276,64 @@
         loadFiles(curPath);
     }
 
-    // 全屏弹窗页面（预览或编辑）
+    // 全屏弹窗页面（预览或编辑和重命名）
     window.openFullScreen = async function(path, sha) {
         editingFile = path;
         fileSha = sha;
+        lastFullScreenPath = path;
         document.getElementById("ghFullBg").style.display = "flex";
         const ext = path.split('.').pop().toLowerCase();
         const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
-        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
+        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>
+            <div class="gh-fullscreen-rename">
+                <input id="renameInput" type="text" value="${getFileName(path)}" style="width:220px;" />
+                <button onclick="renameFile()" class="save-btn">重命名</button>
+            </div>`;
         if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
+            lastFullScreenType = "img";
             contentHtml += `<img src="${rawUrl}" alt="${path}">`;
         } else if (["mp4","webm","ogg"].includes(ext)) {
+            lastFullScreenType = "video";
             contentHtml += `<video src="${rawUrl}" controls></video>`;
         } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
-            // 文本类文件编辑
+            lastFullScreenType = "text";
             contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>
             <div class="gh-fullscreen-actions">
                 <button onclick="saveFullScreenEdit()" class="save-btn">保存</button>
                 <button onclick="closeFullScreen()" class="del-btn">取消</button>
             </div>`;
         } else {
-            // 其它文件仅下载
+            lastFullScreenType = "other";
             contentHtml += `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
         }
         document.getElementById("ghFullContent").innerHTML = contentHtml;
         // 加载文本内容
-        if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+        if (lastFullScreenType === "text") {
             document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
             const res = await fetch(url);
             if (!res.ok) {
                 document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
+                lastFullScreenContent = "";
                 return;
             }
             const data = await res.json();
             let content = atob(data.content.replace(/\n/g, ""));
             document.getElementById("ghFullscreenEdit").value = content;
+            lastFullScreenContent = content;
         }
     }
     window.closeFullScreen = function() {
         editingFile = null;
         fileSha = "";
+        lastFullScreenType = "";
+        lastFullScreenPath = "";
+        lastFullScreenContent = "";
         document.getElementById("ghFullBg").style.display = "none";
         document.getElementById("ghFullContent").innerHTML = "";
+    }
+    document.getElementById("ghFullBg").onclick = function(e) {
+        if (e.target === this) closeFullScreen();
     }
     window.saveFullScreenEdit = async function() {
         if (!editingFile) return;
@@ -353,6 +371,85 @@
                 showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
             }
         }
+    }
+
+    // 重命名文件
+    window.renameFile = async function() {
+        const input = document.getElementById("renameInput");
+        const newName = input.value.trim();
+        if (!newName || !editingFile) return showStatus("请输入新文件名", "#cf222e");
+        if (getFileName(editingFile) === newName) return showStatus("文件名未修改", "#cf222e");
+        const newPath = getParentPath(editingFile) ? getParentPath(editingFile) + '/' + newName : newName;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在重命名...", "#0969da");
+        // 获取原文件内容（如果是文本编辑已加载，优先用已加载内容）
+        let base64Content = null;
+        if (lastFullScreenType === "text" && lastFullScreenContent !== "") {
+            base64Content = btoa(unescape(encodeURIComponent(document.getElementById("ghFullscreenEdit").value)));
+        } else {
+            // 获取当前文件内容
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}?t=${Date.now()}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                showStatus("获取原文件内容失败", "#cf222e");
+                return;
+            }
+            const data = await res.json();
+            base64Content = data.content.replace(/\n/g, "");
+        }
+        // 创建新文件
+        const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${newPath}`;
+        const createRes = await fetch(createUrl, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Rename (create) ${newPath} from ${editingFile} via manager.html`,
+                content: base64Content
+            })
+        });
+        const createData = await createRes.json();
+        if (createRes.ok) {
+            // 删除原文件
+            const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
+            const deleteRes = await fetch(deleteUrl, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Rename (delete) ${editingFile} after renaming to ${newPath} via manager.html`,
+                    sha: fileSha
+                })
+            });
+            const deleteData = await deleteRes.json();
+            if (deleteRes.ok) {
+                showStatus("重命名成功！");
+                loadFiles(curPath);
+                window.closeFullScreen();
+            } else {
+                showStatus("重命名后删除原文件失败: " + (deleteData.message || ""), "#cf222e");
+            }
+        } else {
+            showStatus("重命名失败: " + (createData.message || ""), "#cf222e");
+        }
+    };
+
+    function getFileName(path) {
+        const arr = path.split('/');
+        return arr[arr.length-1];
+    }
+    function getParentPath(path) {
+        const arr = path.split('/');
+        arr.pop();
+        return arr.join('/');
     }
 
     window.delFile = async function(path, sha) {
@@ -525,93 +622,6 @@
     }
 
     loadFiles();
-
-    // 全屏弹窗关闭
-    window.closeFullScreen = function() {
-        editingFile = null;
-        fileSha = "";
-        document.getElementById("ghFullBg").style.display = "none";
-        document.getElementById("ghFullContent").innerHTML = "";
-    }
-    document.getElementById("ghFullBg").onclick = function(e) {
-        if (e.target === this) closeFullScreen();
-    }
-
-    // 全屏弹窗界面（文件名点击触发，支持文本编辑和图片/视频预览）
-    window.openFullScreen = async function(path, sha) {
-        editingFile = path;
-        fileSha = sha;
-        document.getElementById("ghFullBg").style.display = "flex";
-        const ext = path.split('.').pop().toLowerCase();
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
-        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
-        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
-            contentHtml += `<img src="${rawUrl}" alt="${path}">`;
-        } else if (["mp4","webm","ogg"].includes(ext)) {
-            contentHtml += `<video src="${rawUrl}" controls></video>`;
-        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
-            // 文本类文件编辑
-            contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>
-            <div class="gh-fullscreen-actions">
-                <button onclick="saveFullScreenEdit()" class="save-btn">保存</button>
-                <button onclick="closeFullScreen()" class="del-btn">取消</button>
-            </div>`;
-        } else {
-            // 其它文件仅下载
-            contentHtml += `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
-        }
-        document.getElementById("ghFullContent").innerHTML = contentHtml;
-        // 加载文本内容
-        if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
-            document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
-            const res = await fetch(url);
-            if (!res.ok) {
-                document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
-                return;
-            }
-            const data = await res.json();
-            let content = atob(data.content.replace(/\n/g, ""));
-            document.getElementById("ghFullscreenEdit").value = content;
-        }
-    }
-    window.saveFullScreenEdit = async function() {
-        if (!editingFile) return;
-        const val = document.getElementById("ghFullscreenEdit").value;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
-        showStatus("正在保存...", "#0969da");
-        const content = btoa(unescape(encodeURIComponent(val)));
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
-        const res = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Authorization": "token " + token,
-                "Accept": "application/vnd.github+json"
-            },
-            body: JSON.stringify({
-                message: `Update ${editingFile} via manager.html`,
-                content: content,
-                sha: fileSha
-            })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            showStatus("保存成功！");
-            loadFiles(curPath);
-            window.closeFullScreen();
-        } else {
-            showStatus("保存失败: " + (data.message || ""), "#cf222e");
-            if (data.message && data.message.includes("Bad credentials")) {
-                localStorage.removeItem("gh_token");
-                token = "";
-                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-            }
-        }
-    }
     </script>
 </body>
 </html>
