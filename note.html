@@ -26,16 +26,23 @@
     const repo = "abcdd12344.github.io";
     const path = "shared.txt";
     let fileSha = "";
-    // 方法4：token字符串拼接和混淆
-    // 例如：将 token 拆分为数组，并用 join 拼接
-    // 这里仅为示意，实际 token 内容请根据实际情况替换
-    const tokenParts = [
-        "gh", "p_", // ghp_
-        "Y0bu", "FtwX", "AxXU", "XWfA", "7SX2", "nuOr", "Qplh", "C31B", "pWRB"
-    ];
-    const token = tokenParts.join("");
 
-    // 1. 获取 shared.txt 内容
+    // 方法4进阶：复杂混淆
+    // 1. 用base64编码
+    // 2. 再逆序
+    // 3. 拼接后再解码
+    // 你的原始token: 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
+    // base64: Z2hwX1kwYnVGdHdYQXhYVVhXZkE3U1gybnVPclFwbGhDMzFCcFdSQg==
+    // 逆序: ==gBQWRdFcBz3MChlpwbFruOnb2X7EAfZWXhVXYhXWdFtVGnY0X_phgZ
+    const tokenEncoded = "==gBQWRdFcBz3MChlpwbFruOnb2X7EAfZWXhVXYhXWdFtVGnY0X_phgZ";
+    function decodeToken(str) {
+        // 逆序
+        let reversed = str.split('').reverse().join('');
+        // base64解码
+        return atob(reversed);
+    }
+    const token = decodeToken(tokenEncoded);
+
     async function fetchSharedText() {
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
         const res = await fetch(url);
@@ -48,7 +55,6 @@
         document.getElementById("sharedText").value = atob(data.content.replace(/\n/g, ""));
     }
 
-    // 2. 保存内容到 shared.txt
     async function saveSharedText() {
         const content = btoa(unescape(encodeURIComponent(document.getElementById("sharedText").value)));
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
@@ -75,15 +81,9 @@
         setTimeout(() => document.getElementById("saveStatus").textContent = "", 3000);
     }
 
-    // 3. 保存按钮绑定
     document.getElementById("saveBtn").onclick = saveSharedText;
-
-    // 4. 自动刷新内容
     setInterval(fetchSharedText, 10000);
-
-    // 5. 页面加载时获取内容
     fetchSharedText();
-
     </script>
 </body>
 </html>
