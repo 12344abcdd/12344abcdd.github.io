@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>仓库文件管理器</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        body { font-family: "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", sans-serif; background: #f6f8fa; margin: 0; }
+        .gh-header {
+            background: #24292e;
+            color: #fff;
+            padding: 16px 32px;
+            font-size: 1.5em;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+        }
+        .gh-header img {
+            width: 32px; margin-right: 10px;
+        }
+        .container {
+            max-width: 900px;
+            background: #fff;
+            margin: 32px auto;
+            box-shadow: 0 2px 8px #d0d7de44;
+            border-radius: 8px;
+            padding: 32px 32px 24px 32px;
+        }
+        .gh-path {
+            font-size: 1.1em;
+            color: #57606a;
+            margin-bottom: 20px;
+            word-break: break-all;
+        }
+        .gh-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        .gh-table th, .gh-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eaecef;
+            text-align: left;
+            font-size: 1em;
+        }
+        .gh-table th { background: #f6f8fa; color: #24292e; }
+        .gh-table td a { color: #0969da; text-decoration: none; }
+        .gh-table td a:hover { text-decoration: underline; }
+        .gh-actions button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 5px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        .gh-actions .del-btn {
+            background: #cf222e;
+        }
+        .gh-actions .save-btn {
+            background: #0969da;
+        }
+        .gh-actions button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .gh-file-content {
+            width: 100%;
+            height: 250px;
+            margin-top: 12px;
+            font-size: 1.07em;
+        }
+        .gh-status {
+            margin-top: 14px;
+            color: #238636;
+            font-size: 1em;
+            min-height: 1.3em;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 10px; }
+            .gh-header { padding: 10px; font-size: 1.15em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="gh-header">
+        <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
+        文件管理器 <span style="font-size:0.7em;color:#c9d1d9;margin-left:12px;">for abcdd12344/abcdd12344.github.io</span>
+    </div>
+    <div class="container">
+        <div class="gh-path" id="ghPath"></div>
+        <table class="gh-table" id="ghTable">
+            <thead>
+                <tr>
+                    <th>类型</th>
+                    <th>文件/目录名</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="ghFiles"></tbody>
+        </table>
+        <div class="gh-actions" id="ghActions"></div>
+        <textarea class="gh-file-content" id="ghFileContent" style="display:none;"></textarea>
+        <div class="gh-status" id="ghStatus"></div>
+    </div>
+    <script>
+    // repo 信息
+    const owner = "abcdd12344";
+    const repo = "abcdd12344.github.io";
+    let curPath = ""; // 当前路径（""表示根目录）
+    let editingFile = null;
+    let fileSha = "";
+
+    // token相关
+    async function fetchTokenSuffix() {
+        const url = "https://raw.githubusercontent.com/abcdd12344/abcdd12344.github.io/main/token.txt";
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error("无法获取 token 后半部分");
+        }
+        const text = await res.text();
+        return text.trim();
+    }
+    async function getFullToken() {
+        const suffix = await fetchTokenSuffix();
+        return "ghp_" + suffix;
+    }
+    let token = localStorage.getItem("gh_token") || "";
+
+    // 工具函数
+    function showStatus(msg, color="#238636") {
+        const el = document.getElementById("ghStatus");
+        el.textContent = msg;
+        el.style.color = color;
+        setTimeout(() => { el.textContent = ""; }, 2500);
+    }
+    function showPath() {
+        document.getElementById("ghPath").innerHTML = 
+            '<span style="color:#d97706"><b>当前路径：</b></span>' +
+            (curPath ? curPath : '/');
+    }
+
+    // 目录/文件列表
+    async function loadFiles(path="") {
+        showPath();
+        document.getElementById("ghFileContent").style.display = "none";
+        document.getElementById("ghActions").innerHTML = "";
+        let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        const res = await fetch(api);
+        if (!res.ok) {
+            document.getElementById("ghFiles").innerHTML = `<tr><td colspan="3">无法读取文件列表</td></tr>`;
+            return;
+        }
+        let files = await res.json();
+        if (!Array.isArray(files)) files = [files];
+        // 排序: 目录优先
+        files.sort((a, b) => (a.type === b.type) ? a.name.localeCompare(b.name) : (a.type === "dir" ? -1 : 1));
+        let html = "";
+        // 上一级
+        if (path) {
+            const upPath = path.split('/').slice(0, -1).join('/');
+            html += `<tr>
+                <td>↩️</td>
+                <td><a href="javascript:void(0)" onclick="goDir('${upPath}')">返回上级</a></td>
+                <td></td>
+            </tr>`;
+        }
+        for (const f of files) {
+            html += `<tr>
+                <td>${f.type === "dir" ? "📁" : "📄"}</td>
+                <td>
+                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `viewFile('${f.path}','${f.sha}')`}">${f.name}</a>
+                </td>
+                <td>
+                ${f.type === "file" ? `
+                    <button onclick="viewFile('${f.path}','${f.sha}')" class="save-btn">编辑</button>
+                    <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
+                ` : ""}
+                </td>
+            </tr>`;
+        }
+        document.getElementById("ghFiles").innerHTML = html;
+        // 新建文件/目录按钮
+        document.getElementById("ghActions").innerHTML = `
+            <button onclick="showNewFile()" class="save-btn">新建文件</button>
+            <button onclick="showNewDir()" class="save-btn">新建目录</button>
+        `;
+    }
+    window.goDir = function(path) {
+        curPath = path;
+        editingFile = null;
+        fileSha = "";
+        loadFiles(curPath);
+    }
+
+    // 查看文件
+    window.viewFile = async function(path, sha) {
+        editingFile = path;
+        fileSha = sha;
+        document.getElementById("ghActions").innerHTML = `
+            <button onclick="saveFile()" class="save-btn">保存</button>
+            <button onclick="cancelEdit()" class="del-btn">取消编辑</button>
+        `;
+        // 获取内容
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            showStatus("无法读取文件内容", "#cf222e");
+            return;
+        }
+        const data = await res.json();
+        let content = atob(data.content.replace(/\n/g, ""));
+        document.getElementById("ghFileContent").value = content;
+        document.getElementById("ghFileContent").style.display = "block";
+        showStatus(`正在编辑：${path}`, "#0969da");
+    }
+    window.cancelEdit = function() {
+        editingFile = null;
+        fileSha = "";
+        document.getElementById("ghFileContent").style.display = "none";
+        document.getElementById("ghActions").innerHTML = "";
+        showStatus("已取消编辑", "#cf222e");
+    }
+
+    // 保存文件
+    window.saveFile = async function() {
+        if (!editingFile) return;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在保存...", "#0969da");
+        const content = btoa(unescape(encodeURIComponent(document.getElementById("ghFileContent").value)));
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Update ${editingFile} via manager.html`,
+                content: content,
+                sha: fileSha
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("保存成功！");
+            loadFiles(curPath);
+            document.getElementById("ghFileContent").style.display = "none";
+            document.getElementById("ghActions").innerHTML = "";
+        } else {
+            showStatus("保存失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
+
+    // 删除文件
+    window.delFile = async function(path, sha) {
+        if (!confirm(`确定要删除文件：${path} 吗？`)) return;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在删除...", "#cf222e");
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        const res = await fetch(url, {
+            method: "DELETE",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Delete ${path} via manager.html`,
+                sha: sha
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("删除成功！");
+            loadFiles(curPath);
+        } else {
+            showStatus("删除失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
+
+    // 新建文件
+    window.showNewFile = function() {
+        document.getElementById("ghActions").innerHTML = `
+            <input id="newFileName" type="text" style="width:180px;" placeholder="文件名.txt">
+            <button onclick="createFile()" class="save-btn">创建</button>
+            <button onclick="cancelEdit()" class="del-btn">取消</button>
+        `;
+        document.getElementById("ghFileContent").style.display = "block";
+        document.getElementById("ghFileContent").value = "";
+        editingFile = null;
+        fileSha = "";
+    }
+    window.createFile = async function() {
+        let fileName = document.getElementById("newFileName").value.trim();
+        if (!fileName) return showStatus("请输入文件名", "#cf222e");
+        let filePath = curPath ? curPath + "/" + fileName : fileName;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在创建...", "#0969da");
+        const content = btoa(unescape(encodeURIComponent(document.getElementById("ghFileContent").value)));
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Create ${filePath} via manager.html`,
+                content: content
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("创建成功！");
+            loadFiles(curPath);
+            document.getElementById("ghFileContent").style.display = "none";
+            document.getElementById("ghActions").innerHTML = "";
+        } else {
+            showStatus("创建失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
+
+    // 新建目录（通过新建 .keep 文件实现）
+    window.showNewDir = function() {
+        document.getElementById("ghActions").innerHTML = `
+            <input id="newDirName" type="text" style="width:180px;" placeholder="目录名">
+            <button onclick="createDir()" class="save-btn">创建</button>
+            <button onclick="cancelEdit()" class="del-btn">取消</button>
+        `;
+        document.getElementById("ghFileContent").style.display = "none";
+        editingFile = null;
+        fileSha = "";
+    }
+    window.createDir = async function() {
+        let dirName = document.getElementById("newDirName").value.trim();
+        if (!dirName) return showStatus("请输入目录名", "#cf222e");
+        let filePath = curPath ? curPath + "/" + dirName + "/.keep" : dirName + "/.keep";
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在创建目录...", "#0969da");
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Create dir ${dirName} via manager.html`,
+                content: btoa("This is a placeholder file for directory.")
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("目录创建成功！");
+            loadFiles(curPath);
+            document.getElementById("ghActions").innerHTML = "";
+        } else {
+            showStatus("创建失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
+
+    // 初始化
+    loadFiles();
+    </script>
+</body>
+</html>
