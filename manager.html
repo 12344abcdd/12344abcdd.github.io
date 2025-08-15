@@ -92,31 +92,34 @@
             background: #fff;
             box-shadow: 0 4px 32px #24292e66;
             border-radius: 12px;
-            max-width: 90vw;
-            max-height: 90vh;
-            min-width: 200px;
-            min-height: 40px;
-            padding: 20px 24px 16px 24px;
+            max-width: 96vw;
+            max-height: 96vh;
+            min-width: 180px;
+            min-height: 36px;
+            padding: 16px 10px 16px 10px;
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow: auto;
         }
         .gh-modal-close {
             position: absolute;
-            right: 14px;
-            top: 12px;
+            right: 12px;
+            top: 10px;
             font-size: 1.7em;
             color: #24292e;
             background: none;
             border: none;
             cursor: pointer;
+            z-index: 2;
         }
         .gh-modal img, .gh-modal video {
-            max-width: 80vw;
-            max-height: 70vh;
+            max-width: 93vw;
+            max-height: 80vh;
             border-radius: 8px;
             box-shadow: 0 2px 8px #d0d7de33;
+            display: block;
         }
         .gh-modal a {
             font-size: 1.1em;
@@ -126,7 +129,8 @@
         @media (max-width: 600px) {
             .container { padding: 10px; }
             .gh-header { padding: 10px; font-size: 1.15em; }
-            .gh-modal { padding: 8px 6px 8px 6px; }
+            .gh-modal { padding: 5vw 2vw 5vw 2vw; }
+            .gh-modal img, .gh-modal video { max-width: 96vw; max-height: 62vh; }
         }
     </style>
 </head>
@@ -194,7 +198,6 @@
             (curPath ? curPath : '/');
     }
 
-    // 目录/文件列表
     async function loadFiles(path="") {
         showPath();
         document.getElementById("ghFileContent").style.display = "none";
@@ -362,7 +365,7 @@
         const reader = new FileReader();
         reader.onload = async function(e) {
             let result = e.target.result;
-            let base64 = result.split(',')[1]; // remove data URL part
+            let base64 = result.split(',')[1];
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
             const res = await fetch(url, {
                 method: "PUT",
