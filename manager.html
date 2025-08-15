@@ -44,7 +44,7 @@
             font-size: 1em;
         }
         .gh-table th { background: #f6f8fa; color: #24292e; }
-        .gh-table td a { color: #0969da; text-decoration: none; cursor: pointer;}
+        .gh-table td a { color: #0969da; text-decoration: none; }
         .gh-table td a:hover { text-decoration: underline; }
         .gh-actions button {
             background: #238636;
@@ -126,71 +126,11 @@
             color: #0969da;
             word-break: break-all;
         }
-        .gh-edit-page-bg {
-            position: fixed;
-            top:0; left:0; right:0; bottom:0;
-            background: rgba(36,41,46,0.17);
-            z-index: 9999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .gh-edit-page {
-            background: #fff;
-            box-shadow: 0 4px 32px #24292e44;
-            border-radius: 12px;
-            max-width: 98vw;
-            max-height: 98vh;
-            min-width: 220px;
-            min-height: 42px;
-            padding: 24px 18px 20px 18px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            overflow: auto;
-        }
-        .gh-edit-close {
-            position: absolute;
-            right: 14px;
-            top: 10px;
-            font-size: 1.6em;
-            color: #24292e;
-            background: none;
-            border: none;
-            cursor: pointer;
-            z-index: 2;
-        }
-        .gh-edit-filename {
-            font-size: 1.09em;
-            color: #57606a;
-            margin-bottom: 10px;
-            font-weight: bold;
-            word-break: break-all;
-        }
-        .gh-edit-content {
-            width: 100%;
-            min-height: 180px;
-            font-size: 1.07em;
-            margin-bottom: 18px;
-            border: 1px solid #eaecef;
-            border-radius: 6px;
-            padding: 10px;
-            box-sizing: border-box;
-            resize: vertical;
-            background: #f6f8fa;
-        }
-        .gh-edit-actions button {
-            margin-right: 10px;
-            margin-bottom: 6px;
-        }
         @media (max-width: 600px) {
             .container { padding: 10px; }
             .gh-header { padding: 10px; font-size: 1.15em; }
             .gh-modal { padding: 5vw 2vw 5vw 2vw; }
             .gh-modal img, .gh-modal video { max-width: 96vw; max-height: 62vh; }
-            .gh-edit-page { padding: 6vw 3vw 6vw 3vw; }
-            .gh-edit-content { min-height: 100px; }
         }
     </style>
 </head>
@@ -212,6 +152,7 @@
             <tbody id="ghFiles"></tbody>
         </table>
         <div class="gh-actions" id="ghActions"></div>
+        <textarea class="gh-file-content" id="ghFileContent" style="display:none;"></textarea>
         <div class="gh-status" id="ghStatus"></div>
         <input type="file" id="ghUploadInput" style="display:none;" />
     </div>
@@ -220,18 +161,6 @@
         <div class="gh-modal" id="ghModal">
             <button class="gh-modal-close" onclick="closeModal()" title="关闭预览">&times;</button>
             <div id="ghModalContent"></div>
-        </div>
-    </div>
-    <!-- 弹窗编辑页面 -->
-    <div class="gh-edit-page-bg" id="ghEditBg">
-        <div class="gh-edit-page" id="ghEditPage">
-            <button class="gh-edit-close" onclick="closeEditPage()" title="关闭编辑">&times;</button>
-            <div class="gh-edit-filename" id="ghEditFilename"></div>
-            <textarea class="gh-edit-content" id="ghEditContent"></textarea>
-            <div class="gh-edit-actions">
-                <button onclick="saveEditFile()" class="save-btn">保存</button>
-                <button onclick="closeEditPage()" class="del-btn">取消</button>
-            </div>
         </div>
     </div>
     <script>
@@ -271,6 +200,8 @@
 
     async function loadFiles(path="") {
         showPath();
+        document.getElementById("ghFileContent").style.display = "none";
+        document.getElementById("ghActions").innerHTML = "";
         let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         const res = await fetch(api);
         if (!res.ok) {
@@ -293,10 +224,11 @@
             html += `<tr>
                 <td>${f.type === "dir" ? "📁" : "📄"}</td>
                 <td>
-                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openEditPage('${f.path}','${f.sha}')`}">${f.name}</a>
+                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `viewFile('${f.path}','${f.sha}')`}">${f.name}</a>
                 </td>
                 <td>
                 ${f.type === "file" ? `
+                    <button onclick="viewFile('${f.path}','${f.sha}')" class="save-btn">编辑</button>
                     <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
                     <button onclick="previewFile('${f.path}')" class="save-btn">预览</button>
                 ` : ""}
@@ -317,29 +249,34 @@
         loadFiles(curPath);
     }
 
-    // 单独编辑页面弹窗
-    window.openEditPage = async function(path, sha) {
+    window.viewFile = async function(path, sha) {
         editingFile = path;
         fileSha = sha;
-        document.getElementById("ghEditBg").style.display = "flex";
-        document.getElementById("ghEditFilename").textContent = path;
-        document.getElementById("ghEditContent").value = "正在加载内容...";
+        document.getElementById("ghActions").innerHTML = `
+            <button onclick="saveFile()" class="save-btn">保存</button>
+            <button onclick="cancelEdit()" class="del-btn">取消编辑</button>
+        `;
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
         const res = await fetch(url);
         if (!res.ok) {
-            document.getElementById("ghEditContent").value = "(无法读取文件内容)";
+            showStatus("无法读取文件内容", "#cf222e");
             return;
         }
         const data = await res.json();
         let content = atob(data.content.replace(/\n/g, ""));
-        document.getElementById("ghEditContent").value = content;
+        document.getElementById("ghFileContent").value = content;
+        document.getElementById("ghFileContent").style.display = "block";
+        showStatus(`正在编辑：${path}`, "#0969da");
     }
-    window.closeEditPage = function() {
+    window.cancelEdit = function() {
         editingFile = null;
         fileSha = "";
-        document.getElementById("ghEditBg").style.display = "none";
+        document.getElementById("ghFileContent").style.display = "none";
+        document.getElementById("ghActions").innerHTML = "";
+        showStatus("已取消编辑", "#cf222e");
     }
-    window.saveEditFile = async function() {
+
+    window.saveFile = async function() {
         if (!editingFile) return;
         token = localStorage.getItem("gh_token") || "";
         if (!token) {
@@ -347,7 +284,7 @@
             localStorage.setItem("gh_token", token);
         }
         showStatus("正在保存...", "#0969da");
-        const content = btoa(unescape(encodeURIComponent(document.getElementById("ghEditContent").value)));
+        const content = btoa(unescape(encodeURIComponent(document.getElementById("ghFileContent").value)));
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
         const res = await fetch(url, {
             method: "PUT",
@@ -365,7 +302,8 @@
         if (res.ok) {
             showStatus("保存成功！");
             loadFiles(curPath);
-            window.closeEditPage();
+            document.getElementById("ghFileContent").style.display = "none";
+            document.getElementById("ghActions").innerHTML = "";
         } else {
             showStatus("保存失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -462,6 +400,10 @@
             <button onclick="createFile()" class="save-btn">创建</button>
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
+        document.getElementById("ghFileContent").style.display = "block";
+        document.getElementById("ghFileContent").value = "";
+        editingFile = null;
+        fileSha = "";
     }
     window.createFile = async function() {
         let fileName = document.getElementById("newFileName").value.trim();
@@ -473,6 +415,7 @@
             localStorage.setItem("gh_token", token);
         }
         showStatus("正在创建...", "#0969da");
+        const content = btoa(unescape(encodeURIComponent(document.getElementById("ghFileContent").value)));
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
         const res = await fetch(url, {
             method: "PUT",
@@ -482,13 +425,15 @@
             },
             body: JSON.stringify({
                 message: `Create ${filePath} via manager.html`,
-                content: btoa("")
+                content: content
             })
         });
         const data = await res.json();
         if (res.ok) {
             showStatus("创建成功！");
             loadFiles(curPath);
+            document.getElementById("ghFileContent").style.display = "none";
+            document.getElementById("ghActions").innerHTML = "";
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -505,6 +450,9 @@
             <button onclick="createDir()" class="save-btn">创建</button>
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
+        document.getElementById("ghFileContent").style.display = "none";
+        editingFile = null;
+        fileSha = "";
     }
     window.createDir = async function() {
         let dirName = document.getElementById("newDirName").value.trim();
@@ -532,6 +480,7 @@
         if (res.ok) {
             showStatus("目录创建成功！");
             loadFiles(curPath);
+            document.getElementById("ghActions").innerHTML = "";
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
