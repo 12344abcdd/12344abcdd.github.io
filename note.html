@@ -18,18 +18,30 @@
       <span id="saveStatus"></span>
     </div>
     <div id="loginBox" style="margin-top:1em;color:#555;"></div>
-    <p style="color:#888;font-size:0.95em;">
-      注意：首次编辑需要 GitHub 账号 <b>Personal Access Token</b> 进行认证。仅编辑时需要，查看无需认证。
-    </p>
+
     <script>
     const owner = "abcdd12344";
     const repo = "abcdd12344.github.io";
     const path = "shared.txt";
     let fileSha = "";
-
-    // 后半部分硬编码（请替换成你的真实后半部分）
-    const tokenSuffix = "_2fbRMueROFf0kXwmJyUz1gsk4ZFZPA02XMak";
     let token = localStorage.getItem("gh_token") || "";
+
+    // 从 token.txt 获取 token 后半部分
+    async function fetchTokenSuffix() {
+        const url = "https://raw.githubusercontent.com/abcdd12344/abcdd12344.github.io/main/token.txt";
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error("无法获取 token 后半部分");
+        }
+        const text = await res.text();
+        return text.trim();
+    }
+
+    // 获取最终 token
+    async function getFullToken() {
+        const suffix = await fetchTokenSuffix();
+        return "ghp_" + suffix;
+    }
 
     // 1. 获取 shared.txt 内容
     async function fetchSharedText() {
@@ -46,12 +58,12 @@
 
     // 2. 保存内容到 shared.txt
     async function saveSharedText() {
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
         const content = btoa(unescape(encodeURIComponent(document.getElementById("sharedText").value)));
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        if (!token) {
-            askForToken();
-            return;
-        }
         document.getElementById("saveStatus").textContent = "保存中...";
         const res = await fetch(url, {
             method: "PUT",
@@ -74,43 +86,19 @@
             if (data.message && data.message.includes("Bad credentials")) {
                 localStorage.removeItem("gh_token");
                 token = "";
-                askForToken("Token 失效，请重新输入。");
+                document.getElementById("loginBox").innerHTML = "<b>Token 失效或无效，请检查 token.txt 文件。</b>";
             }
         }
         setTimeout(() => document.getElementById("saveStatus").textContent = "", 3000);
     }
 
-    // 3. Token 输入框
-    function askForToken(msg) {
-        document.getElementById("loginBox").innerHTML = `
-            <b>${msg ? msg : "需要输入你的 GitHub Token 前缀（ghp），后半部分自动拼接。"}</b><br>
-            <input id="tokenInput" type="text" style="width:120px;" maxlength="4" placeholder="ghp_">
-            <button onclick="setToken()">保存Token</button>
-            <div style="font-size:90%;margin-top:0.5em;">
-              <a href="https://github.com/settings/tokens?type=beta" target="_blank">获取Token (勾选repo权限即可)</a>
-            </div>
-        `;
-    }
-    window.setToken = function() {
-        const t = document.getElementById("tokenInput").value.trim();
-        // 只允许用户输入ghp_前缀
-        if (t === "ghp") {
-            token = t + tokenSuffix;
-            localStorage.setItem("gh_token", token);
-            document.getElementById("loginBox").innerHTML = "";
-            saveSharedText();
-        } else {
-            askForToken("只允许输入ghp作为前缀，请重新输入！");
-        }
-    };
-
-    // 4. 保存按钮绑定
+    // 3. 保存按钮绑定
     document.getElementById("saveBtn").onclick = saveSharedText;
 
-    // 5. 自动刷新内容
+    // 4. 自动刷新内容
     setInterval(fetchSharedText, 10000);
 
-    // 6. 页面加载时获取内容
+    // 5. 页面加载时获取内容
     fetchSharedText();
 
     </script>
