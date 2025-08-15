@@ -72,6 +72,18 @@
             margin-top: 12px;
             font-size: 1.07em;
         }
+        .gh-preview {
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+        .gh-preview img, .gh-preview video {
+            max-width: 100%;
+            max-height: 350px;
+            display: block;
+            margin: 0 auto 8px auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #d0d7de33;
+        }
         .gh-status {
             margin-top: 14px;
             color: #238636;
@@ -103,13 +115,14 @@
         </table>
         <div class="gh-actions" id="ghActions"></div>
         <textarea class="gh-file-content" id="ghFileContent" style="display:none;"></textarea>
+        <div class="gh-preview" id="ghPreview"></div>
         <div class="gh-status" id="ghStatus"></div>
+        <input type="file" id="ghUploadInput" style="display:none;" />
     </div>
     <script>
-    // repo 信息
     const owner = "abcdd12344";
     const repo = "abcdd12344.github.io";
-    let curPath = ""; // 当前路径（""表示根目录）
+    let curPath = ""; // 当前路径
     let editingFile = null;
     let fileSha = "";
 
@@ -129,7 +142,6 @@
     }
     let token = localStorage.getItem("gh_token") || "";
 
-    // 工具函数
     function showStatus(msg, color="#238636") {
         const el = document.getElementById("ghStatus");
         el.textContent = msg;
@@ -146,6 +158,7 @@
     async function loadFiles(path="") {
         showPath();
         document.getElementById("ghFileContent").style.display = "none";
+        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghActions").innerHTML = "";
         let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         const res = await fetch(api);
@@ -177,15 +190,17 @@
                 ${f.type === "file" ? `
                     <button onclick="viewFile('${f.path}','${f.sha}')" class="save-btn">编辑</button>
                     <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
+                    <button onclick="previewFile('${f.path}')" class="save-btn">预览</button>
                 ` : ""}
                 </td>
             </tr>`;
         }
         document.getElementById("ghFiles").innerHTML = html;
-        // 新建文件/目录按钮
+        // 新建文件/目录/上传文件按钮
         document.getElementById("ghActions").innerHTML = `
             <button onclick="showNewFile()" class="save-btn">新建文件</button>
             <button onclick="showNewDir()" class="save-btn">新建目录</button>
+            <button onclick="showUploadFile()" class="save-btn">上传文件</button>
         `;
     }
     window.goDir = function(path) {
@@ -203,6 +218,7 @@
             <button onclick="saveFile()" class="save-btn">保存</button>
             <button onclick="cancelEdit()" class="del-btn">取消编辑</button>
         `;
+        document.getElementById("ghPreview").innerHTML = "";
         // 获取内容
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
         const res = await fetch(url);
@@ -220,6 +236,7 @@
         editingFile = null;
         fileSha = "";
         document.getElementById("ghFileContent").style.display = "none";
+        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghActions").innerHTML = "";
         showStatus("已取消编辑", "#cf222e");
     }
@@ -298,6 +315,54 @@
         }
     }
 
+    // 上传文件
+    window.showUploadFile = function() {
+        document.getElementById('ghUploadInput').value = '';
+        document.getElementById('ghUploadInput').click();
+    }
+    document.getElementById('ghUploadInput').onchange = async function(evt) {
+        const file = evt.target.files[0];
+        if (!file) return;
+        let filePath = curPath ? curPath + "/" + file.name : file.name;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在上传...", "#0969da");
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            let result = e.target.result;
+            // result is base64 string
+            let base64 = result.split(',')[1]; // remove data URL part
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+            const res = await fetch(url, {
+                method: "PUT",
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Upload ${filePath} via manager.html`,
+                    content: base64
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showStatus("上传成功！");
+                loadFiles(curPath);
+            } else {
+                showStatus("上传失败: " + (data.message || ""), "#cf222e");
+                if (data.message && data.message.includes("Bad credentials")) {
+                    localStorage.removeItem("gh_token");
+                    token = "";
+                    showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
     // 新建文件
     window.showNewFile = function() {
         document.getElementById("ghActions").innerHTML = `
@@ -305,6 +370,7 @@
             <button onclick="createFile()" class="save-btn">创建</button>
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
+        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghFileContent").style.display = "block";
         document.getElementById("ghFileContent").value = "";
         editingFile = null;
@@ -356,6 +422,7 @@
             <button onclick="createDir()" class="save-btn">创建</button>
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
+        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghFileContent").style.display = "none";
         editingFile = null;
         fileSha = "";
@@ -395,6 +462,22 @@
                 showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
             }
         }
+    }
+
+    // 预览文件（图片/视频）
+    window.previewFile = async function(path) {
+        document.getElementById("ghPreview").innerHTML = "";
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        // 判断文件类型
+        const ext = path.split('.').pop().toLowerCase();
+        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
+            document.getElementById("ghPreview").innerHTML = `<img src="${rawUrl}" alt="${path}" />`;
+        } else if (["mp4","webm","ogg"].includes(ext)) {
+            document.getElementById("ghPreview").innerHTML = `<video src="${rawUrl}" controls></video>`;
+        } else {
+            document.getElementById("ghPreview").innerHTML = `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
+        }
+        showStatus("预览：" + path, "#0969da");
     }
 
     // 初始化
