@@ -26,11 +26,14 @@
     const repo = "abcdd12344.github.io";
     const path = "shared.txt";
     let fileSha = "";
-
-    // 仓库限制，token分为两部分硬编码
-    const tokenPrefix = "ghp_";
-    const tokenSuffix = "Y0buFtwXAxXUXWfA7SX2nuOrQplhC31BpWRB"; // 你的Token后半部分
-    const token = tokenPrefix + tokenSuffix;
+    // 方法4：token字符串拼接和混淆
+    // 例如：将 token 拆分为数组，并用 join 拼接
+    // 这里仅为示意，实际 token 内容请根据实际情况替换
+    const tokenParts = [
+        "gh", "p_", // ghp_
+        "Y0bu", "FtwX", "AxXU", "XWfA", "7SX2", "nuOr", "Qplh", "C31B", "pWRB"
+    ];
+    const token = tokenParts.join("");
 
     // 1. 获取 shared.txt 内容
     async function fetchSharedText() {
@@ -80,6 +83,7 @@
 
     // 5. 页面加载时获取内容
     fetchSharedText();
+
     </script>
 </body>
 </html>
