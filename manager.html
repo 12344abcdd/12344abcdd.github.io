@@ -72,27 +72,61 @@
             margin-top: 12px;
             font-size: 1.07em;
         }
-        .gh-preview {
-            margin-top: 16px;
-            margin-bottom: 8px;
-        }
-        .gh-preview img, .gh-preview video {
-            max-width: 100%;
-            max-height: 350px;
-            display: block;
-            margin: 0 auto 8px auto;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px #d0d7de33;
-        }
         .gh-status {
             margin-top: 14px;
             color: #238636;
             font-size: 1em;
             min-height: 1.3em;
         }
+        /* 弹窗样式 */
+        .gh-modal-bg {
+            position: fixed;
+            top:0; left:0; right:0; bottom:0;
+            background: rgba(36,41,46,0.55);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .gh-modal {
+            background: #fff;
+            box-shadow: 0 4px 32px #24292e66;
+            border-radius: 12px;
+            max-width: 90vw;
+            max-height: 90vh;
+            min-width: 200px;
+            min-height: 40px;
+            padding: 20px 24px 16px 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .gh-modal-close {
+            position: absolute;
+            right: 14px;
+            top: 12px;
+            font-size: 1.7em;
+            color: #24292e;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .gh-modal img, .gh-modal video {
+            max-width: 80vw;
+            max-height: 70vh;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #d0d7de33;
+        }
+        .gh-modal a {
+            font-size: 1.1em;
+            color: #0969da;
+            word-break: break-all;
+        }
         @media (max-width: 600px) {
             .container { padding: 10px; }
             .gh-header { padding: 10px; font-size: 1.15em; }
+            .gh-modal { padding: 8px 6px 8px 6px; }
         }
     </style>
 </head>
@@ -115,9 +149,15 @@
         </table>
         <div class="gh-actions" id="ghActions"></div>
         <textarea class="gh-file-content" id="ghFileContent" style="display:none;"></textarea>
-        <div class="gh-preview" id="ghPreview"></div>
         <div class="gh-status" id="ghStatus"></div>
         <input type="file" id="ghUploadInput" style="display:none;" />
+    </div>
+    <!-- 弹窗预览层 -->
+    <div class="gh-modal-bg" id="ghModalBg">
+        <div class="gh-modal" id="ghModal">
+            <button class="gh-modal-close" onclick="closeModal()" title="关闭预览">&times;</button>
+            <div id="ghModalContent"></div>
+        </div>
     </div>
     <script>
     const owner = "abcdd12344";
@@ -158,7 +198,6 @@
     async function loadFiles(path="") {
         showPath();
         document.getElementById("ghFileContent").style.display = "none";
-        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghActions").innerHTML = "";
         let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         const res = await fetch(api);
@@ -168,10 +207,8 @@
         }
         let files = await res.json();
         if (!Array.isArray(files)) files = [files];
-        // 排序: 目录优先
         files.sort((a, b) => (a.type === b.type) ? a.name.localeCompare(b.name) : (a.type === "dir" ? -1 : 1));
         let html = "";
-        // 上一级
         if (path) {
             const upPath = path.split('/').slice(0, -1).join('/');
             html += `<tr>
@@ -196,7 +233,6 @@
             </tr>`;
         }
         document.getElementById("ghFiles").innerHTML = html;
-        // 新建文件/目录/上传文件按钮
         document.getElementById("ghActions").innerHTML = `
             <button onclick="showNewFile()" class="save-btn">新建文件</button>
             <button onclick="showNewDir()" class="save-btn">新建目录</button>
@@ -210,7 +246,6 @@
         loadFiles(curPath);
     }
 
-    // 查看文件
     window.viewFile = async function(path, sha) {
         editingFile = path;
         fileSha = sha;
@@ -218,8 +253,6 @@
             <button onclick="saveFile()" class="save-btn">保存</button>
             <button onclick="cancelEdit()" class="del-btn">取消编辑</button>
         `;
-        document.getElementById("ghPreview").innerHTML = "";
-        // 获取内容
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
         const res = await fetch(url);
         if (!res.ok) {
@@ -236,12 +269,10 @@
         editingFile = null;
         fileSha = "";
         document.getElementById("ghFileContent").style.display = "none";
-        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghActions").innerHTML = "";
         showStatus("已取消编辑", "#cf222e");
     }
 
-    // 保存文件
     window.saveFile = async function() {
         if (!editingFile) return;
         token = localStorage.getItem("gh_token") || "";
@@ -280,7 +311,6 @@
         }
     }
 
-    // 删除文件
     window.delFile = async function(path, sha) {
         if (!confirm(`确定要删除文件：${path} 吗？`)) return;
         token = localStorage.getItem("gh_token") || "";
@@ -315,7 +345,6 @@
         }
     }
 
-    // 上传文件
     window.showUploadFile = function() {
         document.getElementById('ghUploadInput').value = '';
         document.getElementById('ghUploadInput').click();
@@ -333,7 +362,6 @@
         const reader = new FileReader();
         reader.onload = async function(e) {
             let result = e.target.result;
-            // result is base64 string
             let base64 = result.split(',')[1]; // remove data URL part
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
             const res = await fetch(url, {
@@ -363,14 +391,12 @@
         reader.readAsDataURL(file);
     };
 
-    // 新建文件
     window.showNewFile = function() {
         document.getElementById("ghActions").innerHTML = `
             <input id="newFileName" type="text" style="width:180px;" placeholder="文件名.txt">
             <button onclick="createFile()" class="save-btn">创建</button>
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
-        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghFileContent").style.display = "block";
         document.getElementById("ghFileContent").value = "";
         editingFile = null;
@@ -415,14 +441,12 @@
         }
     }
 
-    // 新建目录（通过新建 .keep 文件实现）
     window.showNewDir = function() {
         document.getElementById("ghActions").innerHTML = `
             <input id="newDirName" type="text" style="width:180px;" placeholder="目录名">
             <button onclick="createDir()" class="save-btn">创建</button>
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
-        document.getElementById("ghPreview").innerHTML = "";
         document.getElementById("ghFileContent").style.display = "none";
         editingFile = null;
         fileSha = "";
@@ -464,23 +488,31 @@
         }
     }
 
-    // 预览文件（图片/视频）
+    // 弹窗预览
     window.previewFile = async function(path) {
-        document.getElementById("ghPreview").innerHTML = "";
+        const modalBg = document.getElementById("ghModalBg");
+        const modalContent = document.getElementById("ghModalContent");
         const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
-        // 判断文件类型
         const ext = path.split('.').pop().toLowerCase();
+        let contentHtml = "";
         if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
-            document.getElementById("ghPreview").innerHTML = `<img src="${rawUrl}" alt="${path}" />`;
+            contentHtml = `<img src="${rawUrl}" alt="${path}">`;
         } else if (["mp4","webm","ogg"].includes(ext)) {
-            document.getElementById("ghPreview").innerHTML = `<video src="${rawUrl}" controls></video>`;
+            contentHtml = `<video src="${rawUrl}" controls></video>`;
         } else {
-            document.getElementById("ghPreview").innerHTML = `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
+            contentHtml = `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
         }
-        showStatus("预览：" + path, "#0969da");
+        modalContent.innerHTML = contentHtml;
+        modalBg.style.display = "flex";
+    }
+    window.closeModal = function() {
+        document.getElementById("ghModalBg").style.display = "none";
+        document.getElementById("ghModalContent").innerHTML = "";
+    }
+    document.getElementById("ghModalBg").onclick = function(e) {
+        if (e.target === this) closeModal();
     }
 
-    // 初始化
     loadFiles();
     </script>
 </body>
