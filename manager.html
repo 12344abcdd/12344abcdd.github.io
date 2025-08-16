@@ -5,7 +5,15 @@
     <title>仓库文件管理器</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
-        body { font-family: "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", sans-serif; background: #f6f8fa; margin: 0; }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+            background: #f6f8fa;
+            margin: 0;
+            min-height: 100vh;
+        }
         .gh-header {
             background: #24292e;
             color: #fff;
@@ -21,13 +29,16 @@
         .container {
             max-width: 900px;
             background: #fff;
-            margin: 32px auto;
+            margin: 0 auto;
             box-shadow: 0 2px 8px #d0d7de44;
             border-radius: 8px;
             padding: 32px 32px 24px 32px;
+            min-height: 60vh;
         }
         .gh-top-actions {
             margin-bottom: 18px;
+            display: flex;
+            flex-wrap: wrap;
         }
         .gh-top-actions button, .gh-top-actions input {
             margin-right: 8px;
@@ -210,9 +221,9 @@
             margin-right: 10px;
         }
         @media (max-width: 600px) {
-            .container { padding: 10px; }
+            .container { padding: 10px !important; }
             .gh-header { padding: 10px; font-size: 1.15em; }
-            .gh-fullscreen { padding: 4vw 0 4vw 0; }
+            .gh-fullscreen { padding: 2vw 0 2vw 0; }
             .gh-fullscreen img, .gh-fullscreen video { max-width: 98vw; max-height: 60vh; }
             .gh-fullscreen-content { min-height: 100px; }
             .gh-rename-modal { padding: 10vw 3vw 10vw 3vw; }
@@ -225,7 +236,7 @@
         <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
         文件管理器 <span style="font-size:0.7em;color:#c9d1d9;margin-left:12px;">for abcdd12344/abcdd12344.github.io</span>
     </div>
-    <div class="container">
+    <div class="container" style="width:100%;box-sizing:border-box;">
         <div class="gh-top-actions" id="ghTopActions"></div>
         <div class="gh-path" id="ghPath"></div>
         <table class="gh-table" id="ghTable">
@@ -275,7 +286,6 @@
     let renameOldSha = "";
     let renameType = "";
 
-    // token相关
     async function fetchTokenSuffix() {
         const url = "https://raw.githubusercontent.com/abcdd12344/abcdd12344.github.io/main/token.txt";
         const res = await fetch(url);
@@ -342,8 +352,11 @@
                 ${f.type === "file" ? `
                     <button onclick="showRenameModal('${f.path}','${f.sha}','file')" class="save-btn">重命名</button>
                     <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
+                    <button onclick="downloadFile('${f.path}')" class="save-btn">下载</button>
                 ` : `
                     <button onclick="showRenameModal('${f.path}','','dir')" class="save-btn">重命名</button>
+                    <button onclick="delDir('${f.path}')" class="del-btn">删除</button>
+                    <button onclick="downloadFolder('${f.path}')" class="save-btn">下载</button>
                 `}
                 </td>
             </tr>`;
@@ -378,15 +391,17 @@
         if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
             lastFullScreenType = "img";
             contentHtml += `<img src="${rawUrl}" alt="${path}">`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
         } else if (["mp4","webm","ogg"].includes(ext)) {
             lastFullScreenType = "video";
             contentHtml += `<video src="${rawUrl}" controls></video>`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
         } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
             lastFullScreenType = "text";
             contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>`;
         } else {
             lastFullScreenType = "other";
-            contentHtml += `<a href="${rawUrl}" target="_blank">下载或在新窗口查看文件</a>`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" target="_blank">下载或在新窗口查看文件</a>`;
         }
         document.getElementById("ghFullContent").innerHTML = contentHtml;
         // 加载文本内容
@@ -456,6 +471,105 @@
         }
     }
 
+    // 文件下载
+    window.downloadFile = function(path) {
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        const a = document.createElement("a");
+        a.href = rawUrl;
+        a.download = getFileName(path);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
+    // 文件夹下载（打包为zip，浏览器侧，纯JS，支持小文件夹）
+    window.downloadFolder = async function(path) {
+        showStatus("正在打包文件夹...", "#0969da");
+        // 动态加载 JSZip
+        if (!window.JSZip) {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+            document.body.appendChild(script);
+            await new Promise(r=>{script.onload=r});
+        }
+        const zip = new window.JSZip();
+        async function addDirToZip(dir, zipFolder) {
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
+            const res = await fetch(api);
+            if (!res.ok) return;
+            let items = await res.json();
+            if (!Array.isArray(items)) items = [items];
+            for (const item of items) {
+                if (item.type === "dir") {
+                    addDirToZip(item.path, zipFolder.folder(getFileName(item.path)));
+                } else if (item.type === "file") {
+                    const fileRes = await fetch(item.download_url);
+                    const blob = await fileRes.blob();
+                    zipFolder.file(getFileName(item.path), blob);
+                }
+            }
+        }
+        await addDirToZip(path, zip.folder(getFileName(path)));
+        const content = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(content);
+        a.download = getFileName(path) + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showStatus("文件夹已下载为zip！");
+    };
+
+    // 删除文件夹
+    window.delDir = async function(path) {
+        if (!confirm(`确定要删除整个文件夹：${path} 吗？\n注意：将递归删除目录下所有文件。`)) return;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在递归删除文件夹...", "#cf222e");
+        async function delDirRecursively(dir) {
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
+            const res = await fetch(api);
+            if (!res.ok) return;
+            let items = await res.json();
+            if (!Array.isArray(items)) items = [items];
+            for (const item of items) {
+                if (item.type === "dir") {
+                    await delDirRecursively(item.path);
+                } else if (item.type === "file") {
+                    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
+                        method: "DELETE",
+                        headers: {
+                            "Authorization": "token " + token,
+                            "Accept": "application/vnd.github+json"
+                        },
+                        body: JSON.stringify({
+                            message: `Delete ${item.path} (in folder ${dir}) via manager.html`,
+                            sha: item.sha
+                        })
+                    });
+                }
+            }
+            // 删除占位文件
+            await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}/.keep`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Delete .keep for folder ${dir} via manager.html`,
+                    sha: ""
+                })
+            });
+        }
+        await delDirRecursively(path);
+        showStatus("文件夹删除完成！");
+        loadFiles(curPath);
+    };
+
     // 重命名弹窗
     window.showRenameModal = function(path, sha, type) {
         renameOldPath = path;
@@ -495,7 +609,6 @@
             let ok = true;
             for (const item of items) {
                 const subNewPath = newPath + "/" + getFileName(item.path);
-                // 获取内容
                 let data = item;
                 if (!data.content) {
                     const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`);
@@ -516,7 +629,6 @@
                     })
                 });
                 if (!createRes.ok) { ok = false; break; }
-                // 删除原文件
                 const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`;
                 await fetch(deleteUrl, {
                     method: "DELETE",
@@ -538,7 +650,6 @@
                 showStatus("目录重命名失败", "#cf222e");
             }
         } else {
-            // 文件重命名
             let base64Content = null;
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}?t=${Date.now()}`;
             const res = await fetch(url);
@@ -562,7 +673,6 @@
             });
             const createData = await createRes.json();
             if (createRes.ok) {
-                // 删除原文件
                 const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
                 const deleteRes = await fetch(deleteUrl, {
                     method: "DELETE",
@@ -809,178 +919,6 @@
             loadFiles(curPath);
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
-            if (data.message && data.message.includes("Bad credentials")) {
-                localStorage.removeItem("gh_token");
-                token = "";
-                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-            }
-        }
-    }
-
-    // 重命名弹窗
-    window.showRenameModal = function(path, sha, type) {
-        renameOldPath = path;
-        renameOldSha = sha;
-        renameType = type;
-        document.getElementById("ghRenameBg").style.display = "flex";
-        document.getElementById("ghRenameTitle").textContent = `重命名${type === "dir" ? "目录" : "文件"}: ${path}`;
-        document.getElementById("ghRenameInput").value = getFileName(path);
-    }
-    window.closeRenameModal = function() {
-        renameOldPath = "";
-        renameOldSha = "";
-        renameType = "";
-        document.getElementById("ghRenameBg").style.display = "none";
-    }
-    document.getElementById("ghRenameBg").onclick = function(e) {
-        if (e.target === this) closeRenameModal();
-    }
-    window.doRenameFile = async function() {
-        const newName = document.getElementById("ghRenameInput").value.trim();
-        if (!newName || !renameOldPath) return showStatus("请输入新文件名", "#cf222e");
-        if (getFileName(renameOldPath) === newName) return showStatus("文件名未修改", "#cf222e");
-        const newPath = getParentPath(renameOldPath) ? getParentPath(renameOldPath) + '/' + newName : newName;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
-        showStatus("正在重命名...", "#0969da");
-        if (renameType === "dir") {
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
-            const res = await fetch(api);
-            if (!res.ok) return showStatus("无法获取目录内容", "#cf222e");
-            let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
-            let ok = true;
-            for (const item of items) {
-                const subNewPath = newPath + "/" + getFileName(item.path);
-                let data = item;
-                if (!data.content) {
-                    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`);
-                    if (!r.ok) continue;
-                    data = await r.json();
-                }
-                const base64Content = data.content ? data.content.replace(/\n/g, "") : "";
-                const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${subNewPath}`;
-                const createRes = await fetch(createUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `Rename (move) ${subNewPath} from ${item.path} via manager.html`,
-                        content: base64Content
-                    })
-                });
-                if (!createRes.ok) { ok = false; break; }
-                const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`;
-                await fetch(deleteUrl, {
-                    method: "DELETE",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `Delete ${item.path} after renaming to ${subNewPath} via manager.html`,
-                        sha: item.sha
-                    })
-                });
-            }
-            if (ok) {
-                showStatus("目录重命名成功！");
-                loadFiles(curPath);
-                closeRenameModal();
-            } else {
-                showStatus("目录重命名失败", "#cf222e");
-            }
-        } else {
-            let base64Content = null;
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}?t=${Date.now()}`;
-            const res = await fetch(url);
-            if (!res.ok) {
-                showStatus("获取原文件内容失败", "#cf222e");
-                return;
-            }
-            const data = await res.json();
-            base64Content = data.content.replace(/\n/g, "");
-            const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${newPath}`;
-            const createRes = await fetch(createUrl, {
-                method: "PUT",
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                },
-                body: JSON.stringify({
-                    message: `Rename (create) ${newPath} from ${renameOldPath} via manager.html`,
-                    content: base64Content
-                })
-            });
-            const createData = await createRes.json();
-            if (createRes.ok) {
-                const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
-                const deleteRes = await fetch(deleteUrl, {
-                    method: "DELETE",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `Rename (delete) ${renameOldPath} after renaming to ${newPath} via manager.html`,
-                        sha: renameOldSha
-                    })
-                });
-                const deleteData = await deleteRes.json();
-                if (deleteRes.ok) {
-                    showStatus("重命名成功！");
-                    loadFiles(curPath);
-                    closeRenameModal();
-                } else {
-                    showStatus("重命名后删除原文件失败: " + (deleteData.message || ""), "#cf222e");
-                }
-            } else {
-                showStatus("重命名失败: " + (createData.message || ""), "#cf222e");
-            }
-        }
-    };
-
-    function getFileName(path) {
-        const arr = path.split('/');
-        return arr[arr.length-1];
-    }
-    function getParentPath(path) {
-        const arr = path.split('/');
-        arr.pop();
-        return arr.join('/');
-    }
-
-    window.delFile = async function(path, sha) {
-        if (!confirm(`确定要删除文件：${path} 吗？`)) return;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
-        showStatus("正在删除...", "#cf222e");
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        const res = await fetch(url, {
-            method: "DELETE",
-            headers: {
-                "Authorization": "token " + token,
-                "Accept": "application/vnd.github+json"
-            },
-            body: JSON.stringify({
-                message: `Delete ${path} via manager.html`,
-                sha: sha
-            })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            showStatus("删除成功！");
-            loadFiles(curPath);
-        } else {
-            showStatus("删除失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
                 localStorage.removeItem("gh_token");
                 token = "";
