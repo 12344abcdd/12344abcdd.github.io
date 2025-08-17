@@ -2,253 +2,112 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>仓库文件管理器</title>
+    <title>GitHub 仓库管理器</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <!-- Primer CSS (GitHub官方样式) -->
+    <link rel="stylesheet" href="https://unpkg.com/@primer/css/dist/primer.css">
     <style>
-        html, body {
-            height: 100%;
+        body { background: #f6f8fa; min-height: 100vh; }
+        .Header { background: #24292e; color: #fff; padding: 16px 32px; font-size: 1.5em; letter-spacing: 1px; display: flex; align-items: center; }
+        .Header img { width: 32px; margin-right: 10px; }
+        .repo-header { display:flex; align-items:center; padding:24px 0 16px 0; border-bottom:1px solid #d0d7de; }
+        .repo-header h1 { margin:0 20px 0 0; font-size:1.5em; font-weight:bold; }
+        .repo-header .Label { margin-right:20px; }
+        .repo-header .btn { margin-right:8px; }
+        .branch-switch { margin-right:32px; }
+        .UnderlineNav { margin:26px 0 18px 0; }
+        .repo-content { }
+        .file-navigation { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+        .file-navigation .btn { font-size:1em; }
+        .file-navigation .select-menu { margin-right:20px; }
+        .files-table { width:100%; border-collapse:collapse; background:#fff; margin-bottom:22px; }
+        .files-table th, .files-table td { padding:9px 8px; border-bottom:1px solid #eaecef; font-size:1em; }
+        .files-table th { background:#f6f8fa; font-weight:600; }
+        .files-table td a { color:#0969da; text-decoration:none; }
+        .files-table td a:hover { text-decoration:underline; }
+        .file-ops .btn { margin-right:7px; font-size:0.9em; }
+        .commit-history, .actions-status { margin:0 0 32px 0; }
+        .readme-box { margin:24px 0; }
+        .readme-box .Box-body { background:#fff; padding:18px; }
+        .commitmsg-box { margin-left:12px; }
+        .commitmsg-box input { width:200px; }
+        @media (max-width:800px) {
+            .container-xl { padding:0 4vw; }
         }
-        body {
-            font-family: "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
-            background: #f6f8fa;
-            margin: 0;
-            min-height: 100vh;
-        }
-        .gh-header {
-            background: #24292e;
-            color: #fff;
-            padding: 16px 32px;
-            font-size: 1.5em;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-        }
-        .gh-header img {
-            width: 32px; margin-right: 10px;
-        }
-        .container {
-            max-width: 900px;
-            background: #fff;
-            margin: 0 auto;
-            box-shadow: 0 2px 8px #d0d7de44;
-            border-radius: 8px;
-            padding: 32px 32px 24px 32px;
-            min-height: 60vh;
-        }
-        .gh-top-actions {
-            margin-bottom: 18px;
-            display: flex;
-            flex-wrap: wrap;
-        }
-        .gh-top-actions button, .gh-top-actions input {
-            margin-right: 8px;
-            margin-bottom: 8px;
-        }
-        .gh-path {
-            font-size: 1.1em;
-            color: #57606a;
-            margin-bottom: 20px;
-            word-break: break-all;
-        }
-        .gh-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-        }
-        .gh-table th, .gh-table td {
-            padding: 10px 8px;
-            border-bottom: 1px solid #eaecef;
-            text-align: left;
-            font-size: 1em;
-        }
-        .gh-table th { background: #f6f8fa; color: #24292e; }
-        .gh-table td a { color: #0969da; text-decoration: none; cursor: pointer;}
-        .gh-table td a:hover { text-decoration: underline; }
-        .gh-actions button {
-            background: #238636;
-            color: #fff;
-            border: none;
-            padding: 6px 16px;
-            border-radius: 5px;
-            margin-right: 8px;
-            cursor: pointer;
-            font-size: 1em;
-        }
-        .gh-actions .del-btn {
-            background: #cf222e;
-        }
-        .gh-actions .save-btn {
-            background: #0969da;
-        }
-        .gh-actions button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .gh-status {
-            margin-top: 14px;
-            color: #238636;
-            font-size: 1em;
-            min-height: 1.3em;
-        }
-        /* 全屏弹窗样式 */
-        .gh-fullscreen-bg {
-            position: fixed;
-            top:0; left:0; right:0; bottom:0;
-            background: rgba(36,41,46,0.55);
-            z-index: 9999;
-            display: none;
-            align-items: stretch;
-            justify-content: stretch;
-            width: 100vw;
-            height: 100vh;
-        }
-        .gh-fullscreen {
-            background: #fff;
-            box-shadow: 0 4px 32px #24292e66;
-            border-radius: 0;
-            width: 100vw;
-            height: 100vh;
-            min-width: 180px;
-            min-height: 36px;
-            padding: 34px 0 24px 0;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow: auto;
-        }
-        .gh-fullscreen-close {
-            position: absolute;
-            right: 26px;
-            top: 18px;
-            font-size: 2.4em;
-            color: #24292e;
-            background: none;
-            border: none;
-            cursor: pointer;
-            z-index: 2;
-        }
-        .gh-fullscreen img, .gh-fullscreen video {
-            max-width: 92vw;
-            max-height: 74vh;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px #d0d7de33;
-            display: block;
-            margin-bottom: 12px;
-            margin-top: 12px;
-        }
-        .gh-fullscreen-filename {
-            font-size: 1.12em;
-            color: #57606a;
-            margin-bottom: 16px;
-            font-weight: bold;
-            word-break: break-all;
-        }
-        .gh-fullscreen-content {
-            width: 94vw;
-            min-height: 180px;
-            font-size: 1.07em;
-            margin-bottom: 18px;
-            border: 1px solid #eaecef;
-            border-radius: 6px;
-            padding: 10px;
-            box-sizing: border-box;
-            resize: vertical;
-            background: #f6f8fa;
-        }
-        .gh-fullscreen-actions {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            margin-bottom: 18px;
-        }
-        .gh-fullscreen-actions button {
-            margin-right: 10px;
-        }
-        .gh-fullscreen a {
-            font-size: 1.1em;
-            color: #0969da;
-            word-break: break-all;
-        }
-        /* 重命名弹窗样式 */
-        .gh-rename-bg {
-            position: fixed;
-            top:0; left:0; right:0; bottom:0;
-            background: rgba(36,41,46,0.25);
-            z-index: 10000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .gh-rename-modal {
-            background: #fff;
-            box-shadow: 0 4px 32px #24292e66;
-            border-radius: 11px;
-            min-width: 240px;
-            max-width: 90vw;
-            min-height: 58px;
-            padding: 28px 28px 18px 28px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .gh-rename-close {
-            position: absolute;
-            right: 16px;
-            top: 14px;
-            font-size: 1.8em;
-            color: #24292e;
-            background: none;
-            border: none;
-            cursor: pointer;
-        }
-        .gh-rename-title {
-            font-size: 1.08em;
-            font-weight: bold;
-            margin-bottom: 12px;
-            color: #57606a;
-        }
-        .gh-rename-input {
-            width: 200px;
-            margin-bottom: 16px;
-            padding: 6px;
-            font-size: 1em;
-            border: 1px solid #eaecef;
-            border-radius: 5px;
-        }
-        .gh-rename-actions button {
-            margin-right: 10px;
-        }
-        @media (max-width: 600px) {
-            .container { padding: 10px !important; }
-            .gh-header { padding: 10px; font-size: 1.15em; }
-            .gh-fullscreen { padding: 2vw 0 2vw 0; }
-            .gh-fullscreen img, .gh-fullscreen video { max-width: 98vw; max-height: 60vh; }
-            .gh-fullscreen-content { min-height: 100px; }
-            .gh-rename-modal { padding: 10vw 3vw 10vw 3vw; }
-            .gh-fullscreen-actions { flex-direction: column; align-items: flex-start;}
+        @media (max-width:600px) {
+            .file-navigation, .repo-header { flex-direction:column; align-items:flex-start; }
+            .repo-header h1 { font-size:1.1em; margin-bottom:8px;}
+            .commitmsg-box input { width:120px;}
         }
     </style>
 </head>
 <body>
-    <div class="gh-header">
+    <div class="Header">
         <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
-        文件管理器 <span style="font-size:0.7em;color:#c9d1d9;margin-left:12px;">for abcdd12344/abcdd12344.github.io</span>
+        <span>abcdd12344 / abcdd12344.github.io</span>
     </div>
-    <div class="container" style="width:100%;box-sizing:border-box;">
-        <div class="gh-top-actions" id="ghTopActions"></div>
-        <div class="gh-path" id="ghPath"></div>
-        <table class="gh-table" id="ghTable">
-            <thead>
-                <tr>
-                    <th>类型</th>
-                    <th>文件/目录名</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="ghFiles"></tbody>
-        </table>
+    <div class="container-xl px-3 my-4">
+        <div class="repo-header">
+            <h1>abcdd12344/abcdd12344.github.io</h1>
+            <span class="Label Label--success">Public</span>
+            <button class="btn btn-sm btn-outline" onclick="starRepo()">⭐ Star</button>
+            <button class="btn btn-sm btn-outline" onclick="forkRepo()">🍴 Fork</button>
+            <span class="branch-switch select-menu">
+                <select id="branchSelect" onchange="changeBranch(this.value)" class="form-select">
+                    <option value="main">main</option>
+                </select>
+            </span>
+        </div>
+        <nav class="UnderlineNav">
+            <div class="UnderlineNav-body">
+                <a id="tab-code" href="javascript:void(0);" class="UnderlineNav-item selected" onclick="showTab('code')">Code</a>
+                <a id="tab-commits" href="javascript:void(0);" class="UnderlineNav-item" onclick="showTab('commits')">Commits</a>
+                <a id="tab-actions" href="javascript:void(0);" class="UnderlineNav-item" onclick="showTab('actions')">Actions</a>
+            </div>
+        </nav>
+        <div id="repo-content">
+            <!-- Code Tab -->
+            <div id="code-tab-content">
+                <div class="file-navigation">
+                    <span style="font-weight:600;">当前路径：</span><span id="ghPath"></span>
+                    <button class="btn btn-sm btn-primary" onclick="showNewFile()">新建文件</button>
+                    <button class="btn btn-sm btn-primary" onclick="showNewDir()">新建目录</button>
+                    <button class="btn btn-sm btn-primary" onclick="showUploadFile()">上传文件</button>
+                    <button class="btn btn-sm btn-primary" onclick="showUploadFolder()">上传文件夹</button>
+                    <span class="commitmsg-box">
+                        <input id="commitMsgInput" type="text" placeholder="提交说明" value="通过管理器修改" onchange="commitMsg=this.value">
+                    </span>
+                </div>
+                <table class="files-table" id="ghTable">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>文件/目录名</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ghFiles"></tbody>
+                </table>
+                <div class="readme-box Box mt-4">
+                    <div class="Box-header"><h3 class="Box-title">README.md</h3></div>
+                    <div class="Box-body" id="readme-content"></div>
+                </div>
+            </div>
+            <!-- Commits Tab -->
+            <div id="commits-tab-content" style="display:none;">
+                <div class="commit-history Box">
+                    <div class="Box-header"><h3 class="Box-title">最近提交记录</h3></div>
+                    <div class="Box-body" id="commit-history-content"></div>
+                </div>
+            </div>
+            <!-- Actions Tab -->
+            <div id="actions-tab-content" style="display:none;">
+                <div class="actions-status Box">
+                    <div class="Box-header"><h3 class="Box-title">最近 Actions 状态</h3></div>
+                    <div class="Box-body" id="actions-status-content"></div>
+                </div>
+            </div>
+        </div>
         <div class="gh-status" id="ghStatus"></div>
         <input type="file" id="ghUploadInput" style="display:none;" />
         <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
@@ -268,241 +127,231 @@
             <div class="gh-rename-title" id="ghRenameTitle"></div>
             <input class="gh-rename-input" id="ghRenameInput" type="text" value="">
             <div class="gh-rename-actions">
-                <button onclick="doRenameFile()" class="save-btn">确定</button>
-                <button onclick="closeRenameModal()" class="del-btn">取消</button>
+                <button onclick="doRenameFile()" class="btn btn-primary">确定</button>
+                <button onclick="closeRenameModal()" class="btn btn-danger">取消</button>
             </div>
         </div>
     </div>
+    <!-- marked.js for README markdown render -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
+    // 仓库配置
     const owner = "abcdd12344";
     const repo = "abcdd12344.github.io";
-    let curPath = ""; // 当前路径
-    let editingFile = null;
-    let fileSha = "";
-    let lastFullScreenType = "";
-    let lastFullScreenPath = "";
-    let lastFullScreenContent = "";
-    let renameOldPath = "";
-    let renameOldSha = "";
-    let renameType = "";
+    let branch = "main";
+    let curPath = "";
+    let commitMsg = "通过管理器修改";
+    let editingFile = null, fileSha = "", lastFullScreenType = "", lastFullScreenPath = "", lastFullScreenContent = "";
+    let renameOldPath = "", renameOldSha = "", renameType = "";
 
-    async function fetchTokenSuffix() {
-        const url = "https://raw.githubusercontent.com/abcdd12344/abcdd12344.github.io/main/token.txt";
-        const res = await fetch(url);
-        if (!res.ok) {
-            throw new Error("无法获取 token 后半部分");
-        }
-        const text = await res.text();
-        return text.trim();
+    // Tabs切换
+    function showTab(tab) {
+        ["code","commits","actions"].forEach(t=>{
+            document.getElementById(`${t}-tab-content`).style.display = (t===tab)?"block":"none";
+            document.getElementById(`tab-${t}`).classList.toggle("selected",t===tab);
+        });
+        if(tab==="commits") loadCommits();
+        if(tab==="actions") loadActions();
+        if(tab==="code") { loadFiles(curPath); loadReadme(); }
     }
-    async function getFullToken() {
-        const suffix = await fetchTokenSuffix();
-        return "ghp_" + suffix;
-    }
-    let token = localStorage.getItem("gh_token") || "";
+
+    // 仓库分支选择（仅展示main分支，可扩展分支列表）
+    function changeBranch(b) { branch = b; loadFiles(curPath); loadReadme(); }
 
     function showStatus(msg, color="#238636") {
         const el = document.getElementById("ghStatus");
         el.textContent = msg;
         el.style.color = color;
-        setTimeout(() => { el.textContent = ""; }, 2500);
+        setTimeout(()=>{ el.textContent=""; }, 2500);
     }
-    function showPath() {
-        document.getElementById("ghPath").innerHTML = 
-            '<span style="color:#d97706"><b>当前路径：</b></span>' +
-            (curPath ? curPath : '/');
-    }
-    function showActions() {
-        document.getElementById("ghTopActions").innerHTML = `
-            <button onclick="showNewFile()" class="save-btn">新建文件</button>
-            <button onclick="showNewDir()" class="save-btn">新建目录</button>
-            <button onclick="showUploadFile()" class="save-btn">上传文件</button>
-            <button onclick="showUploadFolder()" class="save-btn">上传文件夹</button>
-        `;
+    function showPath() { document.getElementById("ghPath").innerText = curPath?curPath:"/"; }
+
+    function showActionsBar() {
+        // 新建/上传/提交说明按钮已放到顶部
+        document.getElementById("commitMsgInput").value = commitMsg;
     }
 
+    // 文件列表和操作
     async function loadFiles(path="") {
         showPath();
-        let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
         const res = await fetch(api);
         if (!res.ok) {
             document.getElementById("ghFiles").innerHTML = `<tr><td colspan="3">无法读取文件列表</td></tr>`;
-            showActions();
+            showActionsBar();
             return;
         }
         let files = await res.json();
         if (!Array.isArray(files)) files = [files];
-        files.sort((a, b) => (a.type === b.type) ? a.name.localeCompare(b.name) : (a.type === "dir" ? -1 : 1));
+        files.sort((a,b)=>(a.type===b.type)?a.name.localeCompare(b.name):(a.type==="dir"?-1:1));
         let html = "";
-        if (path) {
-            const upPath = path.split('/').slice(0, -1).join('/');
+        if(path){
+            const upPath = path.split('/').slice(0,-1).join('/');
             html += `<tr>
                 <td>↩️</td>
                 <td><a href="javascript:void(0)" onclick="goDir('${upPath}')">返回上级</a></td>
                 <td></td>
             </tr>`;
         }
-        for (const f of files) {
+        for(const f of files){
             html += `<tr>
-                <td>${f.type === "dir" ? "📁" : "📄"}</td>
-                <td>
-                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a>
-                </td>
-                <td>
-                ${f.type === "file" ? `
-                    <button onclick="showRenameModal('${f.path}','${f.sha}','file')" class="save-btn">重命名</button>
-                    <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
-                    <button onclick="downloadFile('${f.path}')" class="save-btn">下载</button>
-                ` : `
-                    <button onclick="showRenameModal('${f.path}','','dir')" class="save-btn">重命名</button>
-                    <button onclick="delDir('${f.path}')" class="del-btn">删除</button>
-                    <button onclick="downloadFolder('${f.path}')" class="save-btn">下载</button>
+                <td>${f.type==="dir"?"📁":"📄"}</td>
+                <td><a href="javascript:void(0)" onclick="${f.type==="dir"?`goDir('${f.path}')`:`openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a></td>
+                <td class="file-ops">
+                ${f.type==="file"?`
+                    <button class="btn btn-sm btn-primary" onclick="showRenameModal('${f.path}','${f.sha}','file')">重命名</button>
+                    <button class="btn btn-sm btn-danger" onclick="delFile('${f.path}','${f.sha}')">删除</button>
+                    <button class="btn btn-sm btn-outline" onclick="downloadFile('${f.path}')">下载</button>
+                `:`
+                    <button class="btn btn-sm btn-primary" onclick="showRenameModal('${f.path}','','dir')">重命名</button>
+                    <button class="btn btn-sm btn-danger" onclick="delDir('${f.path}')">删除</button>
+                    <button class="btn btn-sm btn-outline" onclick="downloadFolder('${f.path}')">下载</button>
                 `}
                 </td>
             </tr>`;
         }
         document.getElementById("ghFiles").innerHTML = html;
-        showActions();
+        showActionsBar();
     }
-    window.goDir = function(path) {
-        curPath = path;
-        editingFile = null;
-        fileSha = "";
-        loadFiles(curPath);
+    window.goDir = function(path){ curPath = path; loadFiles(curPath); };
+    // README 渲染
+    async function loadReadme() {
+        const url = `https://api.github.com/repos/${owner}/${repo}/readme?ref=${branch}`;
+        const res = await fetch(url);
+        if(res.ok){
+            const data = await res.json();
+            const md = atob(data.content.replace(/\n/g,""));
+            document.getElementById("readme-content").innerHTML = marked.parse(md);
+        }else{
+            document.getElementById("readme-content").innerHTML = "<span style='color:#aaa;'>暂无 README.md</span>";
+        }
+    }
+    // 最近提交历史
+    async function loadCommits(){
+        const api = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=10`;
+        const res = await fetch(api);
+        if(!res.ok){ document.getElementById("commit-history-content").innerHTML = "无法获取提交记录"; return;}
+        const data = await res.json();
+        let html = "<ul>";
+        for(const c of data){
+            html += `<li>
+                <a href="${c.html_url}" target="_blank">${c.commit.message.slice(0,80)}</a>
+                by <span style="color:#0969da">${c.commit.author.name}</span>
+                <span style="color:#57606a">(${c.commit.author.date.replace('T',' ').replace('Z','')})</span>
+            </li>`;
+        }
+        html += "</ul>";
+        document.getElementById("commit-history-content").innerHTML = html;
+    }
+    // 最近 Actions 状态
+    async function loadActions(){
+        const api = `https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=8`;
+        const res = await fetch(api);
+        if(!res.ok){ document.getElementById("actions-status-content").innerHTML = "无法获取 Actions 状态"; return;}
+        const data = await res.json();
+        let html = "<ul>";
+        for(const run of data.workflow_runs||[]){
+            html += `<li>
+                <a href="${run.html_url}" target="_blank">${run.name||"工作流"} #${run.run_number}</a>
+                状态: <span style="color:${run.status=='completed'?(run.conclusion=='success'?'#238636':'#cf222e'):'#f59e42'}">${run.status}${run.conclusion?' ('+run.conclusion+')':''}</span>
+                <span style="color:#57606a">(${run.created_at.replace('T',' ').replace('Z','')})</span>
+            </li>`;
+        }
+        html += "</ul>";
+        document.getElementById("actions-status-content").innerHTML = html;
     }
 
-    // 全屏弹窗页面（预览或编辑）
+    // 文件/目录操作
     window.openFullScreen = async function(path, sha) {
-        editingFile = path;
-        fileSha = sha;
-        lastFullScreenPath = path;
+        editingFile = path; fileSha = sha; lastFullScreenPath = path;
         document.getElementById("ghFullBg").style.display = "flex";
-        // 顶部 actions，仅文本文件有
         const ext = path.split('.').pop().toLowerCase();
         let topActions = "";
-        if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
-            topActions = `<button onclick="saveFullScreenEdit()" class="save-btn">保存</button>
-                <button onclick="closeFullScreen()" class="del-btn">取消</button>`;
+        if(["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length<=5){
+            topActions = `<input id="ghFSCommitMsgInput" type="text" value="${commitMsg}" onchange="commitMsg=this.value">
+                <button onclick="saveFullScreenEdit()" class="btn btn-primary">保存</button>
+                <button onclick="closeFullScreen()" class="btn btn-danger">取消</button>`;
         }
         document.getElementById("ghFullTopActions").innerHTML = topActions;
-
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        if(document.getElementById("ghFSCommitMsgInput")){
+            document.getElementById("ghFSCommitMsgInput").onchange = function(){ commitMsg = this.value; };
+        }
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
         let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
-        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
-            lastFullScreenType = "img";
+        if(["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)){
+            lastFullScreenType="img";
             contentHtml += `<img src="${rawUrl}" alt="${path}">`;
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
-        } else if (["mp4","webm","ogg"].includes(ext)) {
-            lastFullScreenType = "video";
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="btn btn-outline" style="margin-bottom:20px;display:inline-block;">下载</a>`;
+        }else if(["mp4","webm","ogg"].includes(ext)){
+            lastFullScreenType="video";
             contentHtml += `<video src="${rawUrl}" controls></video>`;
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
-        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
-            lastFullScreenType = "text";
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="btn btn-outline" style="margin-bottom:20px;display:inline-block;">下载</a>`;
+        }else if(["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext)||ext.length<=5){
+            lastFullScreenType="text";
             contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>`;
-        } else {
-            lastFullScreenType = "other";
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" target="_blank">下载或在新窗口查看文件</a>`;
+        }else{
+            lastFullScreenType="other";
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="btn btn-outline" target="_blank">下载或在新窗口查看文件</a>`;
         }
         document.getElementById("ghFullContent").innerHTML = contentHtml;
         // 加载文本内容
-        if (lastFullScreenType === "text") {
+        if(lastFullScreenType==="text"){
             document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
             const res = await fetch(url);
-            if (!res.ok) {
+            if(!res.ok){
                 document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
-                lastFullScreenContent = "";
+                lastFullScreenContent="";
                 return;
             }
             const data = await res.json();
-            let content = atob(data.content.replace(/\n/g, ""));
+            let content = atob(data.content.replace(/\n/g,""));
             document.getElementById("ghFullscreenEdit").value = content;
             lastFullScreenContent = content;
         }
     }
-    window.closeFullScreen = function() {
-        editingFile = null;
-        fileSha = "";
-        lastFullScreenType = "";
-        lastFullScreenPath = "";
-        lastFullScreenContent = "";
-        document.getElementById("ghFullBg").style.display = "none";
-        document.getElementById("ghFullContent").innerHTML = "";
-        document.getElementById("ghFullTopActions").innerHTML = "";
-    }
-    document.getElementById("ghFullBg").onclick = function(e) {
-        if (e.target === this) closeFullScreen();
-    }
+    window.closeFullScreen = function(){ document.getElementById("ghFullBg").style.display="none"; document.getElementById("ghFullContent").innerHTML=""; document.getElementById("ghFullTopActions").innerHTML=""; };
+    document.getElementById("ghFullBg").onclick=function(e){ if(e.target===this) closeFullScreen(); };
     window.saveFullScreenEdit = async function() {
-        if (!editingFile) return;
+        if(!editingFile) return;
         const val = document.getElementById("ghFullscreenEdit").value;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        let token = localStorage.getItem("gh_token")||"";
+        if(!token){ token = ""; }
         showStatus("正在保存...", "#0969da");
         const content = btoa(unescape(encodeURIComponent(val)));
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
         const res = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Authorization": "token " + token,
-                "Accept": "application/vnd.github+json"
-            },
-            body: JSON.stringify({
-                message: `Update ${editingFile} via manager.html`,
-                content: content,
-                sha: fileSha
-            })
+            method:"PUT",
+            headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+            body:JSON.stringify({ message:commitMsg, content:content, sha:fileSha, branch:branch })
         });
         const data = await res.json();
-        if (res.ok) {
-            showStatus("保存成功！");
-            loadFiles(curPath);
-            window.closeFullScreen();
-        } else {
-            showStatus("保存失败: " + (data.message || ""), "#cf222e");
-            if (data.message && data.message.includes("Bad credentials")) {
-                localStorage.removeItem("gh_token");
-                token = "";
-                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-            }
-        }
+        if(res.ok){ showStatus("保存成功！"); loadFiles(curPath); closeFullScreen(); }
+        else{ showStatus("保存失败: "+(data.message||""), "#cf222e"); }
     }
-
-    // 文件下载
     window.downloadFile = function(path) {
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
         const a = document.createElement("a");
-        a.href = rawUrl;
-        a.download = getFileName(path);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href = rawUrl; a.download = getFileName(path);
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     };
-
-    // 文件夹下载（打包为zip，浏览器侧，纯JS，支持小文件夹）
     window.downloadFolder = async function(path) {
         showStatus("正在打包文件夹...", "#0969da");
-        // 动态加载 JSZip
-        if (!window.JSZip) {
+        if(!window.JSZip){
             const script = document.createElement("script");
-            script.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+            script.src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
             document.body.appendChild(script);
             await new Promise(r=>{script.onload=r});
         }
         const zip = new window.JSZip();
-        async function addDirToZip(dir, zipFolder) {
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
-            const res = await fetch(api);
-            if (!res.ok) return;
+        async function addDirToZip(dir, zipFolder){
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}?ref=${branch}`;
+            const res = await fetch(api); if(!res.ok) return;
             let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
-            for (const item of items) {
-                if (item.type === "dir") {
-                    addDirToZip(item.path, zipFolder.folder(getFileName(item.path)));
-                } else if (item.type === "file") {
+            if(!Array.isArray(items)) items=[items];
+            for(const item of items){
+                if(item.type==="dir") addDirToZip(item.path, zipFolder.folder(getFileName(item.path)));
+                else if(item.type==="file"){
                     const fileRes = await fetch(item.download_url);
                     const blob = await fileRes.blob();
                     zipFolder.file(getFileName(item.path), blob);
@@ -512,323 +361,176 @@
         await addDirToZip(path, zip.folder(getFileName(path)));
         const content = await zip.generateAsync({type:"blob"});
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(content);
-        a.download = getFileName(path) + ".zip";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href=URL.createObjectURL(content); a.download=getFileName(path)+".zip";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
         showStatus("文件夹已下载为zip！");
     };
-
-    // 删除文件夹
-    window.delDir = async function(path) {
-        if (!confirm(`确定要删除整个文件夹：${path} 吗？\n注意：将递归删除目录下所有文件。`)) return;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
-        showStatus("正在递归删除文件夹...", "#cf222e");
-        async function delDirRecursively(dir) {
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
-            const res = await fetch(api);
-            if (!res.ok) return;
+    window.delDir = async function(path){
+        if(!confirm(`确定要删除文件夹：${path} 吗？`)) return;
+        let token = localStorage.getItem("gh_token")||"";
+        if(!token){ token = ""; }
+        showStatus("正在递归删除...", "#cf222e");
+        async function delDirRecursively(dir){
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}?ref=${branch}`;
+            const res = await fetch(api); if(!res.ok) return;
             let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
-            for (const item of items) {
-                if (item.type === "dir") {
-                    await delDirRecursively(item.path);
-                } else if (item.type === "file") {
-                    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
-                        method: "DELETE",
-                        headers: {
-                            "Authorization": "token " + token,
-                            "Accept": "application/vnd.github+json"
-                        },
-                        body: JSON.stringify({
-                            message: `Delete ${item.path} (in folder ${dir}) via manager.html`,
-                            sha: item.sha
-                        })
+            if(!Array.isArray(items)) items=[items];
+            for(const item of items){
+                if(item.type==="dir") await delDirRecursively(item.path);
+                else if(item.type==="file"){
+                    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`,{
+                        method:"DELETE",
+                        headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                        body:JSON.stringify({ message:`Delete ${item.path} (in folder ${dir})`, sha:item.sha, branch:branch })
                     });
                 }
             }
-            // 删除占位文件
-            await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}/.keep`, {
-                method: "DELETE",
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                },
-                body: JSON.stringify({
-                    message: `Delete .keep for folder ${dir} via manager.html`,
-                    sha: ""
-                })
+            await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}/.keep`,{
+                method:"DELETE",
+                headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                body:JSON.stringify({ message:`Delete .keep for folder ${dir}`, sha:"", branch:branch })
             });
         }
         await delDirRecursively(path);
         showStatus("文件夹删除完成！");
         loadFiles(curPath);
     };
-
-    // 重命名弹窗
-    window.showRenameModal = function(path, sha, type) {
-        renameOldPath = path;
-        renameOldSha = sha;
-        renameType = type;
+    window.showRenameModal = function(path, sha, type){
+        renameOldPath = path; renameOldSha = sha; renameType = type;
         document.getElementById("ghRenameBg").style.display = "flex";
-        document.getElementById("ghRenameTitle").textContent = `重命名${type === "dir" ? "目录" : "文件"}: ${path}`;
+        document.getElementById("ghRenameTitle").textContent = `重命名${type==="dir"?"目录":"文件"}: ${path}`;
         document.getElementById("ghRenameInput").value = getFileName(path);
     }
-    window.closeRenameModal = function() {
-        renameOldPath = "";
-        renameOldSha = "";
-        renameType = "";
-        document.getElementById("ghRenameBg").style.display = "none";
-    }
-    document.getElementById("ghRenameBg").onclick = function(e) {
-        if (e.target === this) closeRenameModal();
-    }
+    window.closeRenameModal = function(){ renameOldPath=""; renameOldSha=""; renameType=""; document.getElementById("ghRenameBg").style.display="none"; };
+    document.getElementById("ghRenameBg").onclick=function(e){ if(e.target===this) closeRenameModal(); };
     window.doRenameFile = async function() {
         const newName = document.getElementById("ghRenameInput").value.trim();
-        if (!newName || !renameOldPath) return showStatus("请输入新文件名", "#cf222e");
-        if (getFileName(renameOldPath) === newName) return showStatus("文件名未修改", "#cf222e");
-        const newPath = getParentPath(renameOldPath) ? getParentPath(renameOldPath) + '/' + newName : newName;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        if(!newName||!renameOldPath) return showStatus("请输入新文件名", "#cf222e");
+        if(getFileName(renameOldPath)===newName) return showStatus("文件名未修改", "#cf222e");
+        const newPath = getParentPath(renameOldPath)?getParentPath(renameOldPath)+'/'+newName:newName;
+        let token = localStorage.getItem("gh_token")||"";
+        if(!token){ token = ""; }
         showStatus("正在重命名...", "#0969da");
-        if (renameType === "dir") {
-            // 目录重命名实际上是移动目录下所有文件
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
-            const res = await fetch(api);
-            if (!res.ok) return showStatus("无法获取目录内容", "#cf222e");
+        if(renameType==="dir"){
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}?ref=${branch}`;
+            const res = await fetch(api); if(!res.ok) return showStatus("无法获取目录内容", "#cf222e");
             let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
+            if(!Array.isArray(items)) items=[items];
             let ok = true;
-            for (const item of items) {
-                const subNewPath = newPath + "/" + getFileName(item.path);
+            for(const item of items){
+                const subNewPath = newPath+"/"+getFileName(item.path);
                 let data = item;
-                if (!data.content) {
-                    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`);
-                    if (!r.ok) continue;
+                if(!data.content){
+                    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}?ref=${branch}`);
+                    if(!r.ok) continue;
                     data = await r.json();
                 }
-                const base64Content = data.content ? data.content.replace(/\n/g, "") : "";
+                const base64Content = data.content?data.content.replace(/\n/g,""):"";
                 const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${subNewPath}`;
-                const createRes = await fetch(createUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `Rename (move) ${subNewPath} from ${item.path} via manager.html`,
-                        content: base64Content
-                    })
+                const createRes = await fetch(createUrl,{
+                    method:"PUT",
+                    headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                    body:JSON.stringify({ message:`Rename (move) ${subNewPath} from ${item.path}`, content:base64Content, branch:branch })
                 });
-                if (!createRes.ok) { ok = false; break; }
+                if(!createRes.ok){ ok=false; break;}
                 const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`;
-                await fetch(deleteUrl, {
-                    method: "DELETE",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `Delete ${item.path} after renaming to ${subNewPath} via manager.html`,
-                        sha: item.sha
-                    })
+                await fetch(deleteUrl,{
+                    method:"DELETE",
+                    headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                    body:JSON.stringify({ message:`Delete ${item.path} after renaming to ${subNewPath}`, sha:item.sha, branch:branch })
                 });
             }
-            if (ok) {
-                showStatus("目录重命名成功！");
-                loadFiles(curPath);
-                closeRenameModal();
-            } else {
-                showStatus("目录重命名失败", "#cf222e");
-            }
-        } else {
+            if(ok){ showStatus("目录重命名成功！"); loadFiles(curPath); closeRenameModal(); }
+            else{ showStatus("目录重命名失败", "#cf222e"); }
+        }else{
             let base64Content = null;
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}?t=${Date.now()}`;
-            const res = await fetch(url);
-            if (!res.ok) {
-                showStatus("获取原文件内容失败", "#cf222e");
-                return;
-            }
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}?ref=${branch}`;
+            const res = await fetch(url); if(!res.ok){ showStatus("获取原文件内容失败", "#cf222e"); return; }
             const data = await res.json();
-            base64Content = data.content.replace(/\n/g, "");
+            base64Content = data.content.replace(/\n/g,"");
             const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${newPath}`;
-            const createRes = await fetch(createUrl, {
-                method: "PUT",
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                },
-                body: JSON.stringify({
-                    message: `Rename (create) ${newPath} from ${renameOldPath} via manager.html`,
-                    content: base64Content
-                })
+            const createRes = await fetch(createUrl,{
+                method:"PUT",
+                headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                body:JSON.stringify({ message:`Rename (create) ${newPath} from ${renameOldPath}`, content:base64Content, branch:branch })
             });
             const createData = await createRes.json();
-            if (createRes.ok) {
+            if(createRes.ok){
                 const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
-                const deleteRes = await fetch(deleteUrl, {
-                    method: "DELETE",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `Rename (delete) ${renameOldPath} after renaming to ${newPath} via manager.html`,
-                        sha: renameOldSha
-                    })
+                const deleteRes = await fetch(deleteUrl,{
+                    method:"DELETE",
+                    headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                    body:JSON.stringify({ message:`Rename (delete) ${renameOldPath} after renaming to ${newPath}`, sha:renameOldSha, branch:branch })
                 });
                 const deleteData = await deleteRes.json();
-                if (deleteRes.ok) {
-                    showStatus("重命名成功！");
-                    loadFiles(curPath);
-                    closeRenameModal();
-                } else {
-                    showStatus("重命名后删除原文件失败: " + (deleteData.message || ""), "#cf222e");
+                if(deleteRes.ok){
+                    showStatus("重命名成功！"); loadFiles(curPath); closeRenameModal();
+                }else{
+                    showStatus("重命名后删除原文件失败: "+(deleteData.message||""), "#cf222e");
                 }
-            } else {
-                showStatus("重命名失败: " + (createData.message || ""), "#cf222e");
+            }else{
+                showStatus("重命名失败: "+(createData.message||""), "#cf222e");
             }
         }
     };
-
-    function getFileName(path) {
-        const arr = path.split('/');
-        return arr[arr.length-1];
-    }
-    function getParentPath(path) {
-        const arr = path.split('/');
-        arr.pop();
-        return arr.join('/');
-    }
-
+    function getFileName(path){ const arr = path.split('/'); return arr[arr.length-1]; }
+    function getParentPath(path){ const arr = path.split('/'); arr.pop(); return arr.join('/'); }
     window.delFile = async function(path, sha) {
-        if (!confirm(`确定要删除文件：${path} 吗？`)) return;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        if(!confirm(`确定要删除文件：${path} 吗？`)) return;
+        let token = localStorage.getItem("gh_token")||"";
+        if(!token){ token = ""; }
         showStatus("正在删除...", "#cf222e");
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         const res = await fetch(url, {
-            method: "DELETE",
-            headers: {
-                "Authorization": "token " + token,
-                "Accept": "application/vnd.github+json"
-            },
-            body: JSON.stringify({
-                message: `Delete ${path} via manager.html`,
-                sha: sha
-            })
+            method:"DELETE",
+            headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+            body:JSON.stringify({ message:`Delete ${path}`, sha:sha, branch:branch })
         });
         const data = await res.json();
-        if (res.ok) {
-            showStatus("删除成功！");
-            loadFiles(curPath);
-        } else {
-            showStatus("删除失败: " + (data.message || ""), "#cf222e");
-            if (data.message && data.message.includes("Bad credentials")) {
-                localStorage.removeItem("gh_token");
-                token = "";
-                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-            }
-        }
+        if(res.ok){ showStatus("删除成功！"); loadFiles(curPath);}
+        else{ showStatus("删除失败: "+(data.message||""), "#cf222e"); }
     }
-
-    window.showUploadFile = function() {
-        document.getElementById('ghUploadInput').value = '';
-        document.getElementById('ghUploadInput').click();
-    }
+    window.showUploadFile = function(){ document.getElementById('ghUploadInput').value=''; document.getElementById('ghUploadInput').click(); }
     document.getElementById('ghUploadInput').onchange = async function(evt) {
-        const file = evt.target.files[0];
-        if (!file) return;
-        let filePath = curPath ? curPath + "/" + file.name : file.name;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        const file = evt.target.files[0]; if(!file) return;
+        let filePath = curPath?curPath+"/"+file.name:file.name;
+        let token = localStorage.getItem("gh_token")||""; if(!token){ token = ""; }
         showStatus("正在上传...", "#0969da");
         const reader = new FileReader();
-        reader.onload = async function(e) {
-            let result = e.target.result;
-            let base64 = result.split(',')[1];
+        reader.onload = async function(e){
+            let result = e.target.result; let base64 = result.split(',')[1];
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
             const res = await fetch(url, {
-                method: "PUT",
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                },
-                body: JSON.stringify({
-                    message: `Upload ${filePath} via manager.html`,
-                    content: base64
-                })
+                method:"PUT",
+                headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                body:JSON.stringify({ message:commitMsg, content:base64, branch:branch })
             });
             const data = await res.json();
-            if (res.ok) {
-                showStatus("上传成功！");
-                loadFiles(curPath);
-            } else {
-                showStatus("上传失败: " + (data.message || ""), "#cf222e");
-                if (data.message && data.message.includes("Bad credentials")) {
-                    localStorage.removeItem("gh_token");
-                    token = "";
-                    showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-                }
-            }
+            if(res.ok){ showStatus("上传成功！"); loadFiles(curPath);}
+            else{ showStatus("上传失败: "+(data.message||""), "#cf222e"); }
         };
         reader.readAsDataURL(file);
     };
-
-    // 上传文件夹
-    window.showUploadFolder = function() {
-        document.getElementById('ghUploadFolderInput').value = '';
-        document.getElementById('ghUploadFolderInput').click();
-    }
+    window.showUploadFolder = function(){ document.getElementById('ghUploadFolderInput').value=''; document.getElementById('ghUploadFolderInput').click(); }
     document.getElementById('ghUploadFolderInput').onchange = async function(evt) {
-        const files = evt.target.files;
-        if (!files || files.length === 0) return;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        const files = evt.target.files; if(!files||files.length===0) return;
+        let token = localStorage.getItem("gh_token")||""; if(!token){ token = ""; }
         showStatus("正在上传文件夹...", "#0969da");
-        let count = 0, failed = 0;
-        for (let i = 0; i < files.length; i++) {
+        let count=0, failed=0;
+        for(let i=0;i<files.length;i++){
             const file = files[i];
-            let filePath = curPath ? curPath + "/" + file.webkitRelativePath : file.webkitRelativePath;
+            let filePath = curPath?curPath+"/"+file.webkitRelativePath:file.webkitRelativePath;
             const reader = new FileReader();
-            await new Promise((resolve) => {
-                reader.onload = async function(e) {
-                    let result = e.target.result;
-                    let base64 = result.split(',')[1];
+            await new Promise(resolve=>{
+                reader.onload = async function(e){
+                    let result = e.target.result; let base64 = result.split(',')[1];
                     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
                     const res = await fetch(url, {
-                        method: "PUT",
-                        headers: {
-                            "Authorization": "token " + token,
-                            "Accept": "application/vnd.github+json"
-                        },
-                        body: JSON.stringify({
-                            message: `Upload ${filePath} via manager.html`,
-                            content: base64
-                        })
+                        method:"PUT",
+                        headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+                        body:JSON.stringify({ message:commitMsg, content:base64, branch:branch })
                     });
-                    if (res.ok) {
-                        count++;
-                    } else {
-                        failed++;
-                    }
+                    if(res.ok){ count++; }else{ failed++; }
                     resolve();
                 };
                 reader.readAsDataURL(file);
@@ -837,97 +539,59 @@
         showStatus(`上传完成：${count} 个文件，失败：${failed} 个。`);
         loadFiles(curPath);
     };
-
-    window.showNewFile = function() {
+    window.showNewFile = function(){
         document.getElementById("ghTopActions").innerHTML = `
             <input id="newFileName" type="text" style="width:180px;" placeholder="文件名.txt">
-            <button onclick="createFile()" class="save-btn">创建</button>
-            <button onclick="cancelEdit()" class="del-btn">取消</button>
+            <button onclick="createFile()" class="btn btn-primary btn-sm">创建</button>
+            <button onclick="cancelEdit()" class="btn btn-danger btn-sm">取消</button>
         `;
     }
-    window.showNewDir = function() {
+    window.showNewDir = function(){
         document.getElementById("ghTopActions").innerHTML = `
             <input id="newDirName" type="text" style="width:180px;" placeholder="目录名">
-            <button onclick="createDir()" class="save-btn">创建</button>
-            <button onclick="cancelEdit()" class="del-btn">取消</button>
+            <button onclick="createDir()" class="btn btn-primary btn-sm">创建</button>
+            <button onclick="cancelEdit()" class="btn btn-danger btn-sm">取消</button>
         `;
     }
-    window.cancelEdit = function() {
-        showActions();
-    };
-    window.createFile = async function() {
+    window.cancelEdit = function(){ showActionsBar(); };
+    window.createFile = async function(){
         let fileName = document.getElementById("newFileName").value.trim();
-        if (!fileName) return showStatus("请输入文件名", "#cf222e");
-        let filePath = curPath ? curPath + "/" + fileName : fileName;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        if(!fileName) return showStatus("请输入文件名", "#cf222e");
+        let filePath = curPath?curPath+"/"+fileName:fileName;
+        let token = localStorage.getItem("gh_token")||""; if(!token){ token = ""; }
         showStatus("正在创建...", "#0969da");
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
         const res = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Authorization": "token " + token,
-                "Accept": "application/vnd.github+json"
-            },
-            body: JSON.stringify({
-                message: `Create ${filePath} via manager.html`,
-                content: btoa("")
-            })
+            method:"PUT",
+            headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+            body:JSON.stringify({ message:commitMsg, content:btoa(""), branch:branch })
         });
         const data = await res.json();
-        if (res.ok) {
-            showStatus("创建成功！");
-            loadFiles(curPath);
-        } else {
-            showStatus("创建失败: " + (data.message || ""), "#cf222e");
-            if (data.message && data.message.includes("Bad credentials")) {
-                localStorage.removeItem("gh_token");
-                token = "";
-                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-            }
-        }
+        if(res.ok){ showStatus("创建成功！"); loadFiles(curPath);}
+        else{ showStatus("创建失败: "+(data.message||""), "#cf222e"); }
     }
-
-    window.createDir = async function() {
+    window.createDir = async function(){
         let dirName = document.getElementById("newDirName").value.trim();
-        if (!dirName) return showStatus("请输入目录名", "#cf222e");
-        let filePath = curPath ? curPath + "/" + dirName + "/.keep" : dirName + "/.keep";
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
+        if(!dirName) return showStatus("请输入目录名", "#cf222e");
+        let filePath = curPath?curPath+"/"+dirName+"/.keep":dirName+"/.keep";
+        let token = localStorage.getItem("gh_token")||""; if(!token){ token = ""; }
         showStatus("正在创建目录...", "#0969da");
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
         const res = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Authorization": "token " + token,
-                "Accept": "application/vnd.github+json"
-            },
-            body: JSON.stringify({
-                message: `Create dir ${dirName} via manager.html`,
-                content: btoa("This is a placeholder file for directory.")
-            })
+            method:"PUT",
+            headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
+            body:JSON.stringify({ message:commitMsg, content:btoa("This is a placeholder file for directory."), branch:branch })
         });
         const data = await res.json();
-        if (res.ok) {
-            showStatus("目录创建成功！");
-            loadFiles(curPath);
-        } else {
-            showStatus("创建失败: " + (data.message || ""), "#cf222e");
-            if (data.message && data.message.includes("Bad credentials")) {
-                localStorage.removeItem("gh_token");
-                token = "";
-                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
-            }
-        }
+        if(res.ok){ showStatus("目录创建成功！"); loadFiles(curPath);}
+        else{ showStatus("创建失败: "+(data.message||""), "#cf222e"); }
     }
+    // 仿Star/Fork按钮
+    function starRepo(){ window.open(`https://github.com/${owner}/${repo}/stargazers`,"_blank"); }
+    function forkRepo(){ window.open(`https://github.com/${owner}/${repo}/fork`,"_blank"); }
 
-    loadFiles();
+    // 初始化
+    showTab("code");
     </script>
 </body>
 </html>
