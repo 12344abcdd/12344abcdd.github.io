@@ -31,24 +31,13 @@
         .readme-box .Box-body { background:#fff; padding:18px; }
         .commitmsg-box { margin-left:12px; }
         .commitmsg-box input { width:200px; }
-        .editor-page-bg { position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(36,41,46,0.88); z-index:9999; display:none; align-items:center; justify-content:center;}
-        .editor-page { background:#fff; border-radius:8px; box-shadow:0 4px 24px rgba(36,41,46,0.12); max-width:900px; width:92vw; max-height:90vh; display:flex; flex-direction:column; position:relative;}
-        .editor-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 8px 18px; border-bottom:1px solid #eaecef; background:#f6f8fa;}
-        .editor-filename { font-weight:bold; font-size:1.1em; color:#24292e;}
-        .editor-actions { display:flex; align-items:center; gap:12px;}
-        .editor-content { flex:1; padding:12px 18px; }
-        .editor-textarea { width:100%; height:60vh; min-height:280px; font-size:1em; font-family:monospace; border:1px solid #d0d7de; border-radius:7px; padding:8px; background:#fff; resize:vertical;}
-        .editor-close { position:absolute; top:6px; right:12px; background:none; border:none; font-size:2em; color:#cf222e; cursor:pointer;}
         @media (max-width:800px) {
             .container-xl { padding:0 4vw; }
-            .editor-page { max-width:99vw; width:99vw; }
         }
         @media (max-width:600px) {
             .file-navigation, .repo-header { flex-direction:column; align-items:flex-start; }
             .repo-header h1 { font-size:1.1em; margin-bottom:8px;}
             .commitmsg-box input { width:120px;}
-            .editor-content { padding:7px; }
-            .editor-header { flex-direction:column; gap:7px;}
         }
     </style>
 </head>
@@ -96,6 +85,21 @@
                             <th>文件/目录名</th>
                             <th>操作</th>
                         </tr>
+                    </thead>
+                    <tbody id="ghFiles"></tbody>
+                </table>
+                <div class="readme-box Box mt-4">
+                    <div class="Box-header"><h3 class="Box-title">README.md</h3></div>
+                    <div class="Box-body" id="readme-content"></div>
+                </div>
+            </div>
+            <!-- Commits Tab -->
+            <div id="commits-tab-content" style="display:none;">
+                <div class="commit-history Box">
+                    <div class="Box-header"><h3 class="Box-title">最近提交记录</h3></div>
+                    <div class="Box-body" id="commit-history-content"></div>
+                </div>
+            </div>
                     </thead>
                     <tbody id="ghFiles"></tbody>
                 </table>
