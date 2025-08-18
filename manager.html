@@ -31,13 +31,24 @@
         .readme-box .Box-body { background:#fff; padding:18px; }
         .commitmsg-box { margin-left:12px; }
         .commitmsg-box input { width:200px; }
+        .editor-page-bg { position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(36,41,46,0.88); z-index:9999; display:none; align-items:center; justify-content:center;}
+        .editor-page { background:#fff; border-radius:8px; box-shadow:0 4px 24px rgba(36,41,46,0.12); max-width:900px; width:92vw; max-height:90vh; display:flex; flex-direction:column; position:relative;}
+        .editor-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 8px 18px; border-bottom:1px solid #eaecef; background:#f6f8fa;}
+        .editor-filename { font-weight:bold; font-size:1.1em; color:#24292e;}
+        .editor-actions { display:flex; align-items:center; gap:12px;}
+        .editor-content { flex:1; padding:12px 18px; }
+        .editor-textarea { width:100%; height:60vh; min-height:280px; font-size:1em; font-family:monospace; border:1px solid #d0d7de; border-radius:7px; padding:8px; background:#fff; resize:vertical;}
+        .editor-close { position:absolute; top:6px; right:12px; background:none; border:none; font-size:2em; color:#cf222e; cursor:pointer;}
         @media (max-width:800px) {
             .container-xl { padding:0 4vw; }
+            .editor-page { max-width:99vw; width:99vw; }
         }
         @media (max-width:600px) {
             .file-navigation, .repo-header { flex-direction:column; align-items:flex-start; }
             .repo-header h1 { font-size:1.1em; margin-bottom:8px;}
             .commitmsg-box input { width:120px;}
+            .editor-content { padding:7px; }
+            .editor-header { flex-direction:column; gap:7px;}
         }
     </style>
 </head>
@@ -112,12 +123,21 @@
         <input type="file" id="ghUploadInput" style="display:none;" />
         <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
     </div>
-    <!-- 全屏弹窗层 -->
-    <div class="gh-fullscreen-bg" id="ghFullBg">
-        <div class="gh-fullscreen" id="ghFullScreen">
-            <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
-            <div class="gh-fullscreen-actions" id="ghFullTopActions"></div>
-            <div id="ghFullContent"></div>
+    <!-- 编辑器完整页面弹窗层 -->
+    <div class="editor-page-bg" id="editorPageBg">
+        <div class="editor-page" id="editorPage">
+            <button class="editor-close" onclick="closeEditorPage()" title="关闭">&times;</button>
+            <div class="editor-header">
+                <span class="editor-filename" id="editorFilename"></span>
+                <div class="editor-actions">
+                    <input id="editorCommitMsgInput" type="text" value="通过管理器修改" placeholder="提交说明" style="width:180px;">
+                    <button onclick="saveEditorEdit()" class="btn btn-primary">保存</button>
+                    <button onclick="closeEditorPage()" class="btn btn-danger">取消</button>
+                </div>
+            </div>
+            <div class="editor-content">
+                <textarea class="editor-textarea" id="editorTextarea"></textarea>
+            </div>
         </div>
     </div>
     <!-- 重命名弹窗层 -->
@@ -143,6 +163,7 @@
     let commitMsg = "通过管理器修改";
     let editingFile = null, fileSha = "", lastFullScreenType = "", lastFullScreenPath = "", lastFullScreenContent = "";
     let renameOldPath = "", renameOldSha = "", renameType = "";
+    let editorActiveFile = null, editorActiveSha = "", editorActiveContent = "";
 
     // Tabs切换
     function showTab(tab) {
@@ -167,7 +188,6 @@
     function showPath() { document.getElementById("ghPath").innerText = curPath?curPath:"/"; }
 
     function showActionsBar() {
-        // 新建/上传/提交说明按钮已放到顶部
         document.getElementById("commitMsgInput").value = commitMsg;
     }
 
@@ -196,7 +216,7 @@
         for(const f of files){
             html += `<tr>
                 <td>${f.type==="dir"?"📁":"📄"}</td>
-                <td><a href="javascript:void(0)" onclick="${f.type==="dir"?`goDir('${f.path}')`:`openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a></td>
+                <td><a href="javascript:void(0)" onclick="${f.type==="dir"?`goDir('${f.path}')`:`openEditorPage('${f.path}','${f.sha}')`}">${f.name}</a></td>
                 <td class="file-ops">
                 ${f.type==="file"?`
                     <button class="btn btn-sm btn-primary" onclick="showRenameModal('${f.path}','${f.sha}','file')">重命名</button>
@@ -262,71 +282,58 @@
     }
 
     // 文件/目录操作
-    window.openFullScreen = async function(path, sha) {
-        editingFile = path; fileSha = sha; lastFullScreenPath = path;
-        document.getElementById("ghFullBg").style.display = "flex";
+    window.openEditorPage = async function(path, sha) {
+        editorActiveFile = path;
+        editorActiveSha = sha;
+        editorActiveContent = "";
+        document.getElementById("editorPageBg").style.display = "flex";
+        document.getElementById("editorFilename").textContent = path;
+        document.getElementById("editorCommitMsgInput").value = commitMsg;
+        document.getElementById("editorTextarea").value = "正在加载内容...";
         const ext = path.split('.').pop().toLowerCase();
-        let topActions = "";
-        if(["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length<=5){
-            topActions = `<input id="ghFSCommitMsgInput" type="text" value="${commitMsg}" onchange="commitMsg=this.value">
-                <button onclick="saveFullScreenEdit()" class="btn btn-primary">保存</button>
-                <button onclick="closeFullScreen()" class="btn btn-danger">取消</button>`;
-        }
-        document.getElementById("ghFullTopActions").innerHTML = topActions;
-        if(document.getElementById("ghFSCommitMsgInput")){
-            document.getElementById("ghFSCommitMsgInput").onchange = function(){ commitMsg = this.value; };
-        }
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
-        if(["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)){
-            lastFullScreenType="img";
-            contentHtml += `<img src="${rawUrl}" alt="${path}">`;
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="btn btn-outline" style="margin-bottom:20px;display:inline-block;">下载</a>`;
-        }else if(["mp4","webm","ogg"].includes(ext)){
-            lastFullScreenType="video";
-            contentHtml += `<video src="${rawUrl}" controls></video>`;
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="btn btn-outline" style="margin-bottom:20px;display:inline-block;">下载</a>`;
-        }else if(["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext)||ext.length<=5){
-            lastFullScreenType="text";
-            contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>`;
-        }else{
-            lastFullScreenType="other";
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="btn btn-outline" target="_blank">下载或在新窗口查看文件</a>`;
-        }
-        document.getElementById("ghFullContent").innerHTML = contentHtml;
-        // 加载文本内容
-        if(lastFullScreenType==="text"){
-            document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
+        // 只允许文本文件编辑
+        if(["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext)||ext.length<=5){
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
             const res = await fetch(url);
             if(!res.ok){
-                document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
-                lastFullScreenContent="";
+                document.getElementById("editorTextarea").value = "(无法读取文件内容)";
+                editorActiveContent="";
                 return;
             }
             const data = await res.json();
             let content = atob(data.content.replace(/\n/g,""));
-            document.getElementById("ghFullscreenEdit").value = content;
-            lastFullScreenContent = content;
+            document.getElementById("editorTextarea").value = content;
+            editorActiveContent = content;
+        }else{
+            document.getElementById("editorTextarea").value = `不支持此类型文件的在线编辑，请下载文件后本地修改。\n\n文件类型：${ext}`;
+            document.getElementById("editorTextarea").disabled = true;
         }
     }
-    window.closeFullScreen = function(){ document.getElementById("ghFullBg").style.display="none"; document.getElementById("ghFullContent").innerHTML=""; document.getElementById("ghFullTopActions").innerHTML=""; };
-    document.getElementById("ghFullBg").onclick=function(e){ if(e.target===this) closeFullScreen(); };
-    window.saveFullScreenEdit = async function() {
-        if(!editingFile) return;
-        const val = document.getElementById("ghFullscreenEdit").value;
+    window.closeEditorPage = function(){
+        document.getElementById("editorPageBg").style.display="none";
+        document.getElementById("editorTextarea").disabled = false;
+        editorActiveFile = null;
+        editorActiveSha = "";
+        editorActiveContent = "";
+    };
+    document.getElementById("editorPageBg").onclick=function(e){ if(e.target===this) closeEditorPage(); };
+    window.saveEditorEdit = async function() {
+        if(!editorActiveFile) return;
+        const val = document.getElementById("editorTextarea").value;
         let token = localStorage.getItem("gh_token")||"";
         if(!token){ token = ""; }
+        let msg = document.getElementById("editorCommitMsgInput").value;
+        commitMsg = msg;
         showStatus("正在保存...", "#0969da");
         const content = btoa(unescape(encodeURIComponent(val)));
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editorActiveFile}`;
         const res = await fetch(url, {
             method:"PUT",
             headers:{ "Authorization":"token "+token, "Accept":"application/vnd.github+json" },
-            body:JSON.stringify({ message:commitMsg, content:content, sha:fileSha, branch:branch })
+            body:JSON.stringify({ message:msg, content:content, sha:editorActiveSha, branch:branch })
         });
         const data = await res.json();
-        if(res.ok){ showStatus("保存成功！"); loadFiles(curPath); closeFullScreen(); }
+        if(res.ok){ showStatus("保存成功！"); loadFiles(curPath); closeEditorPage(); }
         else{ showStatus("保存失败: "+(data.message||""), "#cf222e"); }
     }
     window.downloadFile = function(path) {
@@ -589,6 +596,9 @@
     // 仿Star/Fork按钮
     function starRepo(){ window.open(`https://github.com/${owner}/${repo}/stargazers`,"_blank"); }
     function forkRepo(){ window.open(`https://github.com/${owner}/${repo}/fork`,"_blank"); }
+
+    // 为新文件/目录操作栏保留
+    document.getElementById("ghFiles").insertAdjacentHTML("beforebegin", `<div id="ghTopActions"></div>`);
 
     // 初始化
     showTab("code");
