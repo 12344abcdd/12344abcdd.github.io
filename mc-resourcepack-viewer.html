@@ -4,61 +4,42 @@
   <meta charset="UTF-8">
   <title>我的世界资源包渲染器</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 30px;
-      background: #f8f8f8;
-    }
-    h1 {
-      color: #3867d6;
-    }
-    #threeContainer {
-      width: 400px;
-      height: 400px;
-      background: #222;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    #modelSelect {
-      margin-top: 10px;
-      font-size: 16px;
-      margin-bottom: 20px;
-    }
-    #texturePreview img {
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      transition: box-shadow .2s;
-      margin: 4px;
-      width: 64px;
-      height: 64px;
-      object-fit: contain;
-    }
-    #texturePreview img:hover {
-      box-shadow: 0 0 8px #3867d6;
-    }
+    body { font-family: Arial, sans-serif; margin: 30px; background: #f8f8f8; }
+    h1 { color: #3867d6; }
+    #glcanvas { width: 400px; height: 400px; background: #222; border-radius: 8px; margin-bottom: 20px; display: block; }
+    #modelSelect, #variantSelect { margin: 10px 0 20px 0; font-size: 16px; }
+    #texturePreview img { border: 1px solid #ddd; border-radius: 4px; transition: box-shadow .2s; margin: 4px; width: 64px; height: 64px; object-fit: contain; }
+    #texturePreview img:hover { box-shadow: 0 0 8px #3867d6; }
+    #variantSelect { margin-left: 16px; }
   </style>
 </head>
 <body>
   <h1>我的世界 Java版资源包渲染器</h1>
   <input type="file" id="zipInput" accept=".zip">
-  <div id="threeContainer"></div>
-  <label for="modelSelect">选择方块名称：</label>
-  <select id="modelSelect">
-    <option value="">请选择方块名称</option>
-  </select>
+  <canvas id="glcanvas" width="400" height="400"></canvas>
+  <label for="modelSelect">选择方块：</label>
+  <select id="modelSelect"><option value="">请选择方块</option></select>
+  <label for="variantSelect">状态：</label>
+  <select id="variantSelect"><option value="">无状态</option></select>
   <div id="texturePreview"></div>
-  <!-- 依赖库CDN -->
+  <!-- 依赖库CDN（只用JSZip） -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.min.js"></script>
   <script>
     const zipInput = document.getElementById('zipInput');
     const texturePreview = document.getElementById('texturePreview');
     const modelSelect = document.getElementById('modelSelect');
-    const threeContainer = document.getElementById('threeContainer');
-
+    const variantSelect = document.getElementById('variantSelect');
+    const glcanvas = document.getElementById('glcanvas');
     let textures = {};
     let models = {};
+    let modelVariants = {}; // {modelPath: variantsObj}
+    let currentTextureImages = {}; // {textureKey: Image}
+    let currentElements = [];
+    let currentFaces = [];
+    let currentTextureMap = {};
+    let currentAnimationId = null;
 
+    // ZIP解析
     zipInput.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -66,22 +47,21 @@
       JSZip.loadAsync(file).then(zip => {
         textures = {};
         models = {};
+        modelVariants = {};
         texturePreview.innerHTML = '';
-        modelSelect.innerHTML = '<option value="">请选择方块名称</option>';
-
-        // 查找贴图和模型文件
+        modelSelect.innerHTML = '<option value="">请选择方块</option>';
+        variantSelect.innerHTML = '<option value="">无状态</option>';
+        currentTextureImages = {};
+        // 读取贴图和模型
         zip.forEach((relativePath, zipEntry) => {
-          // PNG贴图
           if (/^assets\/minecraft\/textures\/.*\.png$/.test(relativePath)) {
             textures[relativePath] = zipEntry;
           }
-          // 方块模型JSON
           if (/^assets\/minecraft\/models\/block\/.*\.json$/.test(relativePath)) {
             models[relativePath] = zipEntry;
           }
         });
-
-        // 预览贴图
+        // 贴图预览
         Object.entries(textures).forEach(([path, entry]) => {
           entry.async('base64').then(data => {
             const img = document.createElement('img');
@@ -90,127 +70,480 @@
             texturePreview.appendChild(img);
           });
         });
-
-        // 填充模型选择器，显示方块名称
+        // 模型选择器
         Object.keys(models).forEach(modelPath => {
           const opt = document.createElement('option');
-          // 提取方块名称（文件名不带扩展名）
+          // 文件名不带扩展名
           const nameMatch = modelPath.match(/block\/([^\/]+)\.json$/);
           const blockName = nameMatch ? nameMatch[1] : modelPath;
           opt.value = modelPath;
           opt.textContent = blockName;
           modelSelect.appendChild(opt);
         });
-
-        // 自动渲染第一个方块
+        // 自动选择第一个
         if (modelSelect.options.length > 1) {
           modelSelect.selectedIndex = 1;
-          triggerModelRender();
-        } else {
-          clearThree();
+          triggerModelLoad();
         }
       });
     });
 
-    // Three.js 初始化
-    let renderer, scene, camera, cubeMesh;
-    function initThree() {
-      clearThree();
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(400, 400);
-      threeContainer.appendChild(renderer.domElement);
-
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-      camera.position.set(2, 2, 4);
-      camera.lookAt(0, 0, 0);
-
-      // 光源
-      const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-      scene.add(ambient);
-      const directional = new THREE.DirectionalLight(0xffffff, 0.7);
-      directional.position.set(4, 8, 4);
-      scene.add(directional);
-    }
-
-    function animate() {
-      if (cubeMesh) {
-        cubeMesh.rotation.y += 0.01;
-        renderer.render(scene, camera);
-        requestAnimationFrame(animate);
-      }
-    }
-
-    function clearThree() {
-      // 清理 Three.js 容器
-      threeContainer.innerHTML = '';
-      renderer = null;
-      scene = null;
-      camera = null;
-      cubeMesh = null;
-    }
-
-    // 渲染简易方块模型
-    function renderBlockModel(modelJson, textureDataUrl) {
-      // 清理场景
-      while(scene.children.length > 2) scene.remove(scene.children[2]);
-
-      // 只支持最简单的cube结构
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      let material;
-      if (textureDataUrl) {
-        const texLoader = new THREE.TextureLoader();
-        const texture = texLoader.load(textureDataUrl, () => { renderer.render(scene, camera); });
-        material = new THREE.MeshStandardMaterial({ map: texture });
-      } else {
-        material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
-      }
-      cubeMesh = new THREE.Mesh(geometry, material);
-      scene.add(cubeMesh);
-      animate();
-    }
-
-    // 选择模型后渲染
-    modelSelect.addEventListener('change', triggerModelRender);
-    function triggerModelRender() {
+    // 模型选择时解析 variants
+    modelSelect.addEventListener('change', triggerModelLoad);
+    function triggerModelLoad() {
+      variantSelect.innerHTML = '<option value="">无状态</option>';
       const modelPath = modelSelect.value;
-      if (!modelPath) {
-        clearThree();
-        return;
-      }
-
-      models[modelPath].async('text').then(jsonText => {
-        let modelJson;
-        try {
-          modelJson = JSON.parse(jsonText);
-        } catch (e) {
-          alert('模型JSON解析失败');
-          clearThree();
-          return;
-        }
-
-        // 读取主贴图
-        let texturePath = '';
-        if (modelJson.textures && modelJson.textures.all) {
-          texturePath = modelJson.textures.all.replace(/^minecraft:/, 'assets/minecraft/textures/') + '.png';
-        } else if (modelJson.textures && modelJson.textures.top) {
-          texturePath = modelJson.textures.top.replace(/^minecraft:/, 'assets/minecraft/textures/') + '.png';
-        }
-        if (textures[texturePath]) {
-          textures[texturePath].async('base64').then(data => {
-            const url = 'data:image/png;base64,' + data;
-            initThree();
-            renderBlockModel(modelJson, url);
+      if (!modelPath) { clearGL(); return; }
+      models[modelPath].async('text').then(txt => {
+        let json;
+        try { json = JSON.parse(txt); } catch { clearGL(); return; }
+        // 解析 variants
+        if (json.variants) {
+          modelVariants[modelPath] = json.variants;
+          Object.keys(json.variants).forEach(varName => {
+            const opt = document.createElement('option');
+            opt.value = varName;
+            opt.textContent = varName;
+            variantSelect.appendChild(opt);
           });
+          variantSelect.selectedIndex = 1; // 自动选择第一个状态
         } else {
-          initThree();
-          renderBlockModel(modelJson, null);
+          modelVariants[modelPath] = null;
         }
+        triggerVariantLoad();
+      });
+    }
+    variantSelect.addEventListener('change', triggerVariantLoad);
+
+    // 状态/variant选择时解析 elements
+    function triggerVariantLoad() {
+      clearGL();
+      const modelPath = modelSelect.value;
+      const variantName = variantSelect.value;
+      if (!modelPath) return;
+      models[modelPath].async('text').then(txt => {
+        let json;
+        try { json = JSON.parse(txt); } catch { clearGL(); return; }
+        let modelObj = json;
+        // 处理 variants
+        if (json.variants && variantName && variantName !== "") {
+          let variant = json.variants[variantName];
+          // variant可以是数组或对象
+          if (Array.isArray(variant)) variant = variant[0];
+          if (variant.model) {
+            // 变体引用其他模型
+            let modelRef = 'assets/minecraft/models/block/' + variant.model.replace(/^minecraft:/,'') + '.json';
+            if (models[modelRef]) {
+              models[modelRef].async('text').then(subTxt => {
+                let subJson;
+                try { subJson = JSON.parse(subTxt); } catch { clearGL(); return; }
+                prepareElements(subJson, modelPath);
+              });
+              return;
+            }
+          }
+          // 变体本身有 elements
+          if (variant.elements) {
+            prepareElements(variant, modelPath);
+            return;
+          }
+        }
+        // multipart（未完全支持，仅渲染第一个apply）
+        if (json.multipart) {
+          let mpart = json.multipart[0]?.apply;
+          if (mpart?.model) {
+            let modelRef = 'assets/minecraft/models/block/' + mpart.model.replace(/^minecraft:/,'') + '.json';
+            if (models[modelRef]) {
+              models[modelRef].async('text').then(subTxt => {
+                let subJson;
+                try { subJson = JSON.parse(subTxt); } catch { clearGL(); return; }
+                prepareElements(subJson, modelPath);
+              });
+              return;
+            }
+          }
+        }
+        // 默认渲染自身
+        prepareElements(modelObj, modelPath);
       });
     }
 
-    // 初始Three.js空容器
-    clearThree();
+    // 解析 elements 和 faces，准备贴图
+    function prepareElements(modelObj, modelPath) {
+      currentElements = [];
+      currentFaces = [];
+      currentTextureMap = {};
+
+      // 处理父模型引用（只递归到一层）
+      if (modelObj.parent && modelObj.parent.startsWith("block/")) {
+        let parentPath = 'assets/minecraft/models/' + modelObj.parent + '.json';
+        if (models[parentPath]) {
+          models[parentPath].async('text').then(parentTxt => {
+            let parentJson;
+            try { parentJson = JSON.parse(parentTxt); } catch { clearGL(); return; }
+            if (parentJson.elements) {
+              modelObj.elements = parentJson.elements;
+            }
+            if (parentJson.textures) {
+              modelObj.textures = {...parentJson.textures, ...modelObj.textures};
+            }
+            extractElements(modelObj);
+          });
+          return;
+        }
+      }
+      extractElements(modelObj);
+    }
+    function extractElements(modelObj) {
+      if (!modelObj.elements) { renderCube(); return; }
+      // 解析 textures 映射
+      currentTextureMap = modelObj.textures || {};
+      // 解析 elements
+      currentElements = [];
+      currentFaces = [];
+      modelObj.elements.forEach(ele => {
+        // 坐标
+        const from = ele.from.map(v => (v-8)/8); // [-1,1]
+        const to = ele.to.map(v => (v-8)/8);
+        // faces: {north:{texture:"#xxx"}, ...}
+        currentElements.push({from, to});
+        currentFaces.push(ele.faces);
+      });
+      // 预加载所有可能贴图
+      let textureKeys = new Set();
+      Object.values(currentFaces).forEach(faceObj => {
+        Object.values(faceObj).forEach(face => {
+          if (face.texture) textureKeys.add(face.texture);
+        });
+      });
+      let textureLoads = [];
+      currentTextureImages = {};
+      let loadCount = 0;
+      if (textureKeys.size === 0) { renderElements(); return; }
+      textureKeys.forEach(texKey => {
+        let texName = texKey.startsWith('#') ? currentTextureMap[texKey.slice(1)] : texKey;
+        if (!texName) { loadCount++; if (loadCount === textureKeys.size) renderElements(); return; }
+        let texPath = 'assets/minecraft/textures/' + texName.replace(/^minecraft:/, '') + '.png';
+        if (!textures[texPath]) { loadCount++; if (loadCount === textureKeys.size) renderElements(); return; }
+        textures[texPath].async('base64').then(data => {
+          const img = new Image();
+          img.onload = () => {
+            currentTextureImages[texKey] = img;
+            loadCount++;
+            if (loadCount === textureKeys.size) renderElements();
+          };
+          img.src = 'data:image/png;base64,' + data;
+        });
+      });
+      // 没有贴图直接渲染
+      if (textureKeys.size === 0) renderElements();
+    }
+
+    // WebGL渲染所有elements
+    function renderElements() {
+      if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+      const gl = glcanvas.getContext('webgl');
+      gl.viewport(0, 0, glcanvas.width, glcanvas.height);
+      gl.clearColor(0.13, 0.13, 0.13, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // 顶点着色器
+      const vsSource = `
+        attribute vec3 aPosition;
+        attribute vec2 aTexCoord;
+        attribute float aTexIndex;
+        uniform mat4 uModelViewMatrix;
+        uniform mat4 uProjectionMatrix;
+        varying vec2 vTexCoord;
+        varying float vTexIndex;
+        void main(void) {
+          gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+          vTexCoord = aTexCoord;
+          vTexIndex = aTexIndex;
+        }
+      `;
+      // 片元着色器
+      const fsSource = `
+        precision mediump float;
+        varying vec2 vTexCoord;
+        varying float vTexIndex;
+        uniform sampler2D uSamplers[6];
+        uniform int uTexCount;
+        void main(void) {
+          if (uTexCount == 0) {
+            gl_FragColor = vec4(0.8,0.8,0.8,1.0);
+          } else {
+            int idx = int(vTexIndex);
+            gl_FragColor = texture2D(uSamplers[idx], vTexCoord);
+          }
+        }
+      `;
+      // 编译shader
+      function loadShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+      const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+      const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+      const prog = gl.createProgram();
+      gl.attachShader(prog, vertexShader);
+      gl.attachShader(prog, fragmentShader);
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      // 所有顶点数据
+      let verts = [], uvs = [], texIdx = [], idxs = [];
+      let vOffset = 0, tIndexMap = {};
+      // 限制最多支持6种不同贴图
+      let texKeys = Object.keys(currentTextureImages).slice(0,6);
+      texKeys.forEach((tk,i) => tIndexMap[tk]=i);
+      currentElements.forEach((ele, eidx) => {
+        const [fx,fy,fz] = ele.from, [tx,ty,tz] = ele.to;
+        // 立方体8顶点
+        const cubeVerts = [
+          [fx,fy,tz],[tx,fy,tz],[tx,ty,tz],[fx,ty,tz],
+          [fx,fy,fz],[tx,fy,fz],[tx,ty,fz],[fx,ty,fz]
+        ];
+        verts.push(...cubeVerts.flat());
+
+        // faces顺序: front, back, left, right, top, bottom
+        const facesOrder = ['north','south','west','east','up','down'];
+        const faceIdxs = [
+          [0,1,2,0,2,3], [4,5,6,4,6,7], [4,0,3,4,3,7], [1,5,6,1,6,2], [3,2,6,3,6,7], [4,5,1,4,1,0]
+        ];
+        const uvDefault = [[0,1],[1,1],[1,0],[0,0]];
+        facesOrder.forEach((face, fi) => {
+          const thisFace = currentFaces[eidx]?.[face];
+          let texKey = thisFace?.texture || texKeys[0] || '';
+          let tidx = tIndexMap[texKey] ?? 0;
+          let faceUV = uvDefault;
+          // 取自face uv（不支持复杂uv映射）
+          if (thisFace && thisFace.uv) {
+            let [u0,v0,u1,v1] = thisFace.uv.map(s => s/16);
+            faceUV = [[u0,v1],[u1,v1],[u1,v0],[u0,v0]];
+          }
+          let vbase = vOffset;
+          // 每面6个顶点（两个三角形），每顶点UV和贴图编号
+          faceIdxs[fi].forEach((vi,triIdx) => {
+            uvs.push(...faceUV[triIdx%4]);
+            texIdx.push(tidx);
+            idxs.push(vbase+vi);
+          });
+        });
+        vOffset += 8;
+      });
+
+      // 顶点
+      const vbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+      const aPosition = gl.getAttribLocation(prog, 'aPosition');
+      gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aPosition);
+      // UV
+      const uvbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, uvbo);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
+      const aTexCoord = gl.getAttribLocation(prog, 'aTexCoord');
+      gl.vertexAttribPointer(aTexCoord, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aTexCoord);
+      // 贴图编号
+      const tbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, tbo);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texIdx), gl.STATIC_DRAW);
+      const aTexIndex = gl.getAttribLocation(prog, 'aTexIndex');
+      gl.vertexAttribPointer(aTexIndex, 1, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aTexIndex);
+      // 索引
+      const ibo = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idxs), gl.STATIC_DRAW);
+
+      // 矩阵
+      const uModelViewMatrix = gl.getUniformLocation(prog, 'uModelViewMatrix');
+      const uProjectionMatrix = gl.getUniformLocation(prog, 'uProjectionMatrix');
+      function makePerspective(fovy, aspect, near, far) {
+        let out = new Float32Array(16);
+        let f = 1.0 / Math.tan(fovy / 2);
+        out[0] = f / aspect; out[5] = f;
+        out[10] = (far + near) / (near - far); out[11] = -1;
+        out[14] = (2 * far * near) / (near - far);
+        return out;
+      }
+      function makeModelViewMatrix(rotY) {
+        let out = new Float32Array(16);
+        let c = Math.cos(rotY), s = Math.sin(rotY);
+        out.set([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,-2.5,1]);
+        return out;
+      }
+      gl.uniformMatrix4fv(uProjectionMatrix, false, makePerspective(Math.PI/4, glcanvas.width/glcanvas.height, 0.1, 100));
+
+      // 贴图绑定
+      let texCount = texKeys.length;
+      for (let i=0; i<texCount; i++) {
+        gl.activeTexture(gl['TEXTURE'+i]);
+        let tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, currentTextureImages[texKeys[i]]);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.uniform1i(gl.getUniformLocation(prog, 'uSamplers['+i+']'), i);
+      }
+      gl.uniform1i(gl.getUniformLocation(prog, 'uTexCount'), texCount);
+
+      gl.enable(gl.DEPTH_TEST);
+
+      // 动画
+      let rotY = 0;
+      function draw() {
+        rotY += 0.01;
+        gl.uniformMatrix4fv(uModelViewMatrix, false, makeModelViewMatrix(rotY));
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.drawElements(gl.TRIANGLES, idxs.length, gl.UNSIGNED_SHORT, 0);
+        currentAnimationId = requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    // 没有elements时渲染cube
+    function renderCube() {
+      if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+      const gl = glcanvas.getContext('webgl');
+      gl.viewport(0, 0, glcanvas.width, glcanvas.height);
+      gl.clearColor(0.13, 0.13, 0.13, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      const vsSource = `
+        attribute vec3 aPosition;
+        attribute vec2 aTexCoord;
+        uniform mat4 uModelViewMatrix;
+        uniform mat4 uProjectionMatrix;
+        varying vec2 vTexCoord;
+        void main(void) {
+          gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+          vTexCoord = aTexCoord;
+        }
+      `;
+      const fsSource = `
+        precision mediump float;
+        varying vec2 vTexCoord;
+        uniform sampler2D uSampler;
+        uniform bool uHasTexture;
+        void main(void) {
+          if(uHasTexture) gl_FragColor = texture2D(uSampler, vTexCoord);
+          else gl_FragColor = vec4(0.8,0.8,0.8,1.0);
+        }
+      `;
+      function loadShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+      const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+      const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+      const prog = gl.createProgram();
+      gl.attachShader(prog, vertexShader);
+      gl.attachShader(prog, fragmentShader);
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      const vertices = new Float32Array([
+        -0.5,-0.5, 0.5,  0,1, 0.5,-0.5, 0.5,  1,1, 0.5, 0.5, 0.5,  1,0, -0.5, 0.5, 0.5,  0,0,
+        -0.5,-0.5,-0.5,  1,1, 0.5,-0.5,-0.5,  0,1, 0.5, 0.5,-0.5,  0,0, -0.5, 0.5,-0.5,  1,0,
+      ]);
+      const indices = new Uint16Array([
+        0,1,2, 0,2,3, 4,5,6, 4,6,7, 4,0,3, 4,3,7, 1,5,6, 1,6,2, 3,2,6, 3,6,7, 4,5,1, 4,1,0
+      ]);
+      const vbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+      const aPosition = gl.getAttribLocation(prog, 'aPosition');
+      gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 20, 0);
+      gl.enableVertexAttribArray(aPosition);
+      const aTexCoord = gl.getAttribLocation(prog, 'aTexCoord');
+      gl.vertexAttribPointer(aTexCoord, 2, gl.FLOAT, false, 20, 12);
+      gl.enableVertexAttribArray(aTexCoord);
+
+      const ibo = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+      const uModelViewMatrix = gl.getUniformLocation(prog, 'uModelViewMatrix');
+      const uProjectionMatrix = gl.getUniformLocation(prog, 'uProjectionMatrix');
+      function makePerspective(fovy, aspect, near, far) {
+        let out = new Float32Array(16);
+        let f = 1.0 / Math.tan(fovy / 2);
+        out[0] = f / aspect; out[5] = f;
+        out[10] = (far + near) / (near - far); out[11] = -1;
+        out[14] = (2 * far * near) / (near - far);
+        return out;
+      }
+      function makeModelViewMatrix(rotY) {
+        let out = new Float32Array(16);
+        let c = Math.cos(rotY), s = Math.sin(rotY);
+        out.set([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,-2.5,1]);
+        return out;
+      }
+      gl.uniformMatrix4fv(uProjectionMatrix, false, makePerspective(Math.PI/4, glcanvas.width/glcanvas.height, 0.1, 100));
+
+      // 贴图
+      let hasTexture = false;
+      let img = null;
+      // 查找主贴图
+      if (currentTextureMap && currentTextureMap.all) {
+        let texPath = 'assets/minecraft/textures/' + currentTextureMap.all.replace(/^minecraft:/, '') + '.png';
+        if (textures[texPath]) {
+          hasTexture = true;
+          textures[texPath].async('base64').then(data => {
+            img = new Image();
+            img.onload = function() { drawCube(img); };
+            img.src = 'data:image/png;base64,' + data;
+          });
+        }
+      }
+      if (!hasTexture) drawCube();
+      function drawCube(texImg) {
+        if (texImg) {
+          const tex = gl.createTexture();
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texImg);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.uniform1i(gl.getUniformLocation(prog, 'uSampler'), 0);
+          gl.uniform1i(gl.getUniformLocation(prog, 'uHasTexture'), 1);
+        } else {
+          gl.uniform1i(gl.getUniformLocation(prog, 'uHasTexture'), 0);
+        }
+        gl.enable(gl.DEPTH_TEST);
+        let rotY = 0;
+        function draw() {
+          rotY += 0.01;
+          gl.uniformMatrix4fv(uModelViewMatrix, false, makeModelViewMatrix(rotY));
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+          gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+          currentAnimationId = requestAnimationFrame(draw);
+        }
+        draw();
+      }
+    }
+
+    function clearGL() {
+      if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+      const gl = glcanvas.getContext('webgl');
+      gl.clearColor(0.13, 0.13, 0.13, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    }
+
+    clearGL();
   </script>
 </body>
 </html>
