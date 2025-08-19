@@ -12,6 +12,18 @@
     h1 {
       color: #3867d6;
     }
+    #threeContainer {
+      width: 400px;
+      height: 400px;
+      background: #222;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    #modelSelect {
+      margin-top: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
     #texturePreview img {
       border: 1px solid #ddd;
       border-radius: 4px;
@@ -24,32 +36,17 @@
     #texturePreview img:hover {
       box-shadow: 0 0 8px #3867d6;
     }
-    #modelPreview {
-      margin-top: 30px;
-    }
-    #threeContainer {
-      width: 400px;
-      height: 400px;
-      background: #222;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-    #modelSelect {
-      margin-top: 10px;
-      font-size: 16px;
-    }
   </style>
 </head>
 <body>
   <h1>我的世界 Java版资源包渲染器</h1>
   <input type="file" id="zipInput" accept=".zip">
+  <div id="threeContainer"></div>
+  <label for="modelSelect">选择方块名称：</label>
+  <select id="modelSelect">
+    <option value="">请选择方块名称</option>
+  </select>
   <div id="texturePreview"></div>
-  <div id="modelPreview">
-    <h2>3D模型预览</h2>
-    <label for="modelSelect">选择方块名称：</label>
-    <select id="modelSelect"></select>
-    <div id="threeContainer"></div>
-  </div>
   <!-- 依赖库CDN -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.min.js"></script>
@@ -104,16 +101,21 @@
           opt.textContent = blockName;
           modelSelect.appendChild(opt);
         });
+
+        // 自动渲染第一个方块
+        if (modelSelect.options.length > 1) {
+          modelSelect.selectedIndex = 1;
+          triggerModelRender();
+        } else {
+          clearThree();
+        }
       });
     });
 
     // Three.js 初始化
     let renderer, scene, camera, cubeMesh;
     function initThree() {
-      if (renderer) {
-        renderer.dispose();
-        threeContainer.innerHTML = '';
-      }
+      clearThree();
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(400, 400);
       threeContainer.appendChild(renderer.domElement);
@@ -139,6 +141,15 @@
       }
     }
 
+    function clearThree() {
+      // 清理 Three.js 容器
+      threeContainer.innerHTML = '';
+      renderer = null;
+      scene = null;
+      camera = null;
+      cubeMesh = null;
+    }
+
     // 渲染简易方块模型
     function renderBlockModel(modelJson, textureDataUrl) {
       // 清理场景
@@ -160,9 +171,13 @@
     }
 
     // 选择模型后渲染
-    modelSelect.addEventListener('change', function() {
-      const modelPath = this.value;
-      if (!modelPath) return;
+    modelSelect.addEventListener('change', triggerModelRender);
+    function triggerModelRender() {
+      const modelPath = modelSelect.value;
+      if (!modelPath) {
+        clearThree();
+        return;
+      }
 
       models[modelPath].async('text').then(jsonText => {
         let modelJson;
@@ -170,6 +185,7 @@
           modelJson = JSON.parse(jsonText);
         } catch (e) {
           alert('模型JSON解析失败');
+          clearThree();
           return;
         }
 
@@ -191,10 +207,10 @@
           renderBlockModel(modelJson, null);
         }
       });
-    });
+    }
 
-    // 初始Three.js
-    initThree();
+    // 初始Three.js空容器
+    clearThree();
   </script>
 </body>
 </html>
