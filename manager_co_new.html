@@ -5,9 +5,7 @@
     <title>仓库文件管理器</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
-        html, body {
-            height: 100%;
-        }
+        html, body { height: 100%; }
         body {
             font-family: "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
             background: #f6f8fa;
@@ -23,9 +21,7 @@
             display: flex;
             align-items: center;
         }
-        .gh-header img {
-            width: 32px; margin-right: 10px;
-        }
+        .gh-header img { width: 32px; margin-right: 10px; }
         .container {
             max-width: 900px;
             background: #fff;
@@ -74,12 +70,8 @@
             cursor: pointer;
             font-size: 1em;
         }
-        .gh-actions .del-btn {
-            background: #cf222e;
-        }
-        .gh-actions .save-btn {
-            background: #0969da;
-        }
+        .gh-actions .del-btn { background: #cf222e; }
+        .gh-actions .save-btn { background: #0969da; }
         .gh-actions button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
@@ -90,7 +82,6 @@
             font-size: 1em;
             min-height: 1.3em;
         }
-        /* 全屏弹窗样式 */
         .gh-fullscreen-bg {
             position: fixed;
             top:0; left:0; right:0; bottom:0;
@@ -162,15 +153,12 @@
             align-items: center;
             margin-bottom: 18px;
         }
-        .gh-fullscreen-actions button {
-            margin-right: 10px;
-        }
+        .gh-fullscreen-actions button { margin-right: 10px; }
         .gh-fullscreen a {
             font-size: 1.1em;
             color: #0969da;
             word-break: break-all;
         }
-        /* 重命名弹窗样式 */
         .gh-rename-bg {
             position: fixed;
             top:0; left:0; right:0; bottom:0;
@@ -217,9 +205,7 @@
             border: 1px solid #eaecef;
             border-radius: 5px;
         }
-        .gh-rename-actions button {
-            margin-right: 10px;
-        }
+        .gh-rename-actions button { margin-right: 10px; }
         @media (max-width: 600px) {
             .container { padding: 10px !important; }
             .gh-header { padding: 10px; font-size: 1.15em; }
@@ -253,7 +239,6 @@
         <input type="file" id="ghUploadInput" style="display:none;" />
         <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
     </div>
-    <!-- 全屏弹窗层 -->
     <div class="gh-fullscreen-bg" id="ghFullBg">
         <div class="gh-fullscreen" id="ghFullScreen">
             <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
@@ -261,7 +246,6 @@
             <div id="ghFullContent"></div>
         </div>
     </div>
-    <!-- 重命名弹窗层 -->
     <div class="gh-rename-bg" id="ghRenameBg">
         <div class="gh-rename-modal" id="ghRenameModal">
             <button class="gh-rename-close" onclick="closeRenameModal()" title="关闭重命名">&times;</button>
@@ -276,7 +260,7 @@
     <script>
     const owner = "abcdd12344";
     const repo = "abcdd12344.github.io";
-    let curPath = ""; // 当前路径
+    let curPath = "";
     let editingFile = null;
     let fileSha = "";
     let lastFullScreenType = "";
@@ -289,9 +273,7 @@
     async function fetchTokenSuffix() {
         const url = "https://raw.githubusercontent.com/abcdd12344/abcdd12344.github.io/main/token.txt";
         const res = await fetch(url);
-        if (!res.ok) {
-            throw new Error("无法获取 token 后半部分");
-        }
+        if (!res.ok) { throw new Error("无法获取 token 后半部分"); }
         const text = await res.text();
         return text.trim();
     }
@@ -321,10 +303,9 @@
         `;
     }
 
-    // 修正1：API加入时间戳参数，避免缓存
     async function loadFiles(path="") {
         showPath();
-        let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+        let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         const res = await fetch(api);
         if (!res.ok) {
             document.getElementById("ghFiles").innerHTML = `<tr><td colspan="3">无法读取文件列表</td></tr>`;
@@ -372,7 +353,367 @@
         loadFiles(curPath);
     }
 
-    // ...（其它弹窗、编辑等功能与原文件一致）...
+    window.openFullScreen = async function(path, sha) {
+        editingFile = path;
+        fileSha = sha;
+        lastFullScreenPath = path;
+        document.getElementById("ghFullBg").style.display = "flex";
+        const ext = path.split('.').pop().toLowerCase();
+        let topActions = "";
+        if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+            topActions = `<button onclick="saveFullScreenEdit()" class="save-btn">保存</button>
+                <button onclick="closeFullScreen()" class="del-btn">取消</button>`;
+        }
+        document.getElementById("ghFullTopActions").innerHTML = topActions;
+
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        let contentHtml = `<div class="gh-fullscreen-filename">${path}</div>`;
+        if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
+            lastFullScreenType = "img";
+            contentHtml += `<img src="${rawUrl}" alt="${path}">`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
+        } else if (["mp4","webm","ogg"].includes(ext)) {
+            lastFullScreenType = "video";
+            contentHtml += `<video src="${rawUrl}" controls></video>`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
+        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+            lastFullScreenType = "text";
+            contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>`;
+        } else {
+            lastFullScreenType = "other";
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" target="_blank">下载或在新窗口查看文件</a>`;
+        }
+        document.getElementById("ghFullContent").innerHTML = contentHtml;
+        if (lastFullScreenType === "text") {
+            document.getElementById("ghFullscreenEdit").value = "正在加载内容...";
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?t=${Date.now()}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                document.getElementById("ghFullscreenEdit").value = "(无法读取文件内容)";
+                lastFullScreenContent = "";
+                return;
+            }
+            const data = await res.json();
+            let content = atob(data.content.replace(/\n/g, ""));
+            document.getElementById("ghFullscreenEdit").value = content;
+            lastFullScreenContent = content;
+        }
+    }
+    window.closeFullScreen = function() {
+        editingFile = null;
+        fileSha = "";
+        lastFullScreenType = "";
+        lastFullScreenPath = "";
+        lastFullScreenContent = "";
+        document.getElementById("ghFullBg").style.display = "none";
+        document.getElementById("ghFullContent").innerHTML = "";
+        document.getElementById("ghFullTopActions").innerHTML = "";
+    }
+    document.getElementById("ghFullBg").onclick = function(e) {
+        if (e.target === this) closeFullScreen();
+    }
+    window.saveFullScreenEdit = async function() {
+        if (!editingFile) return;
+        const val = document.getElementById("ghFullscreenEdit").value;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在保存...", "#0969da");
+        const content = btoa(unescape(encodeURIComponent(val)));
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${editingFile}`;
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Update ${editingFile} via manager.html`,
+                content: content,
+                sha: fileSha
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("保存成功！");
+            await loadFiles(curPath);
+            window.closeFullScreen();
+        } else {
+            showStatus("保存失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
+
+    window.downloadFile = function(path) {
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        const a = document.createElement("a");
+        a.href = rawUrl;
+        a.download = getFileName(path);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
+    window.downloadFolder = async function(path) {
+        showStatus("正在打包文件夹...", "#0969da");
+        if (!window.JSZip) {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+            document.body.appendChild(script);
+            await new Promise(r=>{script.onload=r});
+        }
+        const zip = new window.JSZip();
+        async function addDirToZip(dir, zipFolder) {
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
+            const res = await fetch(api);
+            if (!res.ok) return;
+            let items = await res.json();
+            if (!Array.isArray(items)) items = [items];
+            for (const item of items) {
+                if (item.type === "dir") {
+                    addDirToZip(item.path, zipFolder.folder(getFileName(item.path)));
+                } else if (item.type === "file") {
+                    const fileRes = await fetch(item.download_url);
+                    const blob = await fileRes.blob();
+                    zipFolder.file(getFileName(item.path), blob);
+                }
+            }
+        }
+        await addDirToZip(path, zip.folder(getFileName(path)));
+        const content = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(content);
+        a.download = getFileName(path) + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showStatus("文件夹已下载为zip！");
+    };
+
+    window.delDir = async function(path) {
+        if (!confirm(`确定要删除整个文件夹：${path} 吗？\n注意：将递归删除目录下所有文件。`)) return;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在递归删除文件夹...", "#cf222e");
+        async function delDirRecursively(dir) {
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
+            const res = await fetch(api);
+            if (!res.ok) return;
+            let items = await res.json();
+            if (!Array.isArray(items)) items = [items];
+            for (const item of items) {
+                if (item.type === "dir") {
+                    await delDirRecursively(item.path);
+                } else if (item.type === "file") {
+                    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
+                        method: "DELETE",
+                        headers: {
+                            "Authorization": "token " + token,
+                            "Accept": "application/vnd.github+json"
+                        },
+                        body: JSON.stringify({
+                            message: `Delete ${item.path} (in folder ${dir}) via manager.html`,
+                            sha: item.sha
+                        })
+                    });
+                }
+            }
+            await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}/.keep`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Delete .keep for folder ${dir} via manager.html`,
+                    sha: ""
+                })
+            });
+        }
+        await delDirRecursively(path);
+        showStatus("文件夹删除完成！");
+        await loadFiles(curPath);
+    };
+
+    window.showRenameModal = function(path, sha, type) {
+        renameOldPath = path;
+        renameOldSha = sha;
+        renameType = type;
+        document.getElementById("ghRenameBg").style.display = "flex";
+        document.getElementById("ghRenameTitle").textContent = `重命名${type === "dir" ? "目录" : "文件"}: ${path}`;
+        document.getElementById("ghRenameInput").value = getFileName(path);
+    }
+    window.closeRenameModal = function() {
+        renameOldPath = "";
+        renameOldSha = "";
+        renameType = "";
+        document.getElementById("ghRenameBg").style.display = "none";
+    }
+    document.getElementById("ghRenameBg").onclick = function(e) {
+        if (e.target === this) closeRenameModal();
+    }
+    window.doRenameFile = async function() {
+        const newName = document.getElementById("ghRenameInput").value.trim();
+        if (!newName || !renameOldPath) return showStatus("请输入新文件名", "#cf222e");
+        if (getFileName(renameOldPath) === newName) return showStatus("文件名未修改", "#cf222e");
+        const newPath = getParentPath(renameOldPath) ? getParentPath(renameOldPath) + '/' + newName : newName;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在重命名...", "#0969da");
+        if (renameType === "dir") {
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
+            const res = await fetch(api);
+            if (!res.ok) return showStatus("无法获取目录内容", "#cf222e");
+            let items = await res.json();
+            if (!Array.isArray(items)) items = [items];
+            let ok = true;
+            for (const item of items) {
+                const subNewPath = newPath + "/" + getFileName(item.path);
+                let data = item;
+                if (!data.content) {
+                    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`);
+                    if (!r.ok) continue;
+                    data = await r.json();
+                }
+                const base64Content = data.content ? data.content.replace(/\n/g, "") : "";
+                const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${subNewPath}`;
+                const createRes = await fetch(createUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": "token " + token,
+                        "Accept": "application/vnd.github+json"
+                    },
+                    body: JSON.stringify({
+                        message: `Rename (move) ${subNewPath} from ${item.path} via manager.html`,
+                        content: base64Content
+                    })
+                });
+                if (!createRes.ok) { ok = false; break; }
+                const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`;
+                await fetch(deleteUrl, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": "token " + token,
+                        "Accept": "application/vnd.github+json"
+                    },
+                    body: JSON.stringify({
+                        message: `Delete ${item.path} after renaming to ${subNewPath} via manager.html`,
+                        sha: item.sha
+                    })
+                });
+            }
+            if (ok) {
+                showStatus("目录重命名成功！");
+                await loadFiles(curPath);
+                closeRenameModal();
+            } else {
+                showStatus("目录重命名失败", "#cf222e");
+            }
+        } else {
+            let base64Content = null;
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}?t=${Date.now()}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                showStatus("获取原文件内容失败", "#cf222e");
+                return;
+            }
+            const data = await res.json();
+            base64Content = data.content.replace(/\n/g, "");
+            const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${newPath}`;
+            const createRes = await fetch(createUrl, {
+                method: "PUT",
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Rename (create) ${newPath} from ${renameOldPath} via manager.html`,
+                    content: base64Content
+                })
+            });
+            const createData = await createRes.json();
+            if (createRes.ok) {
+                const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${renameOldPath}`;
+                const deleteRes = await fetch(deleteUrl, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": "token " + token,
+                        "Accept": "application/vnd.github+json"
+                    },
+                    body: JSON.stringify({
+                        message: `Rename (delete) ${renameOldPath} after renaming to ${newPath} via manager.html`,
+                        sha: renameOldSha
+                    })
+                });
+                const deleteData = await deleteRes.json();
+                if (deleteRes.ok) {
+                    showStatus("重命名成功！");
+                    await loadFiles(curPath);
+                    closeRenameModal();
+                } else {
+                    showStatus("重命名后删除原文件失败: " + (deleteData.message || ""), "#cf222e");
+                }
+            } else {
+                showStatus("重命名失败: " + (createData.message || ""), "#cf222e");
+            }
+        }
+    };
+
+    function getFileName(path) {
+        const arr = path.split('/');
+        return arr[arr.length-1];
+    }
+    function getParentPath(path) {
+        const arr = path.split('/');
+        arr.pop();
+        return arr.join('/');
+    }
+
+    window.delFile = async function(path, sha) {
+        if (!confirm(`确定要删除文件：${path} 吗？`)) return;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在删除...", "#cf222e");
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        const res = await fetch(url, {
+            method: "DELETE",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Delete ${path} via manager.html`,
+                sha: sha
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("删除成功！");
+            await loadFiles(curPath);
+        } else {
+            showStatus("删除失败: " + (data.message || ""), "#cf222e");
+            if (data.message && data.message.includes("Bad credentials")) {
+                localStorage.removeItem("gh_token");
+                token = "";
+                showStatus("Token 失效或无效，请检查 token.txt 文件。", "#cf222e");
+            }
+        }
+    }
 
     window.showUploadFile = function() {
         document.getElementById('ghUploadInput').value = '';
@@ -407,9 +748,7 @@
             const data = await res.json();
             if (res.ok) {
                 showStatus("上传成功！");
-                await loadFiles(curPath); // 修正1：立即刷新
-                // 修正2：上传到空目录时自动删除.keep
-                await tryDeleteKeep(curPath);
+                await loadFiles(curPath);
             } else {
                 showStatus("上传失败: " + (data.message || ""), "#cf222e");
                 if (data.message && data.message.includes("Bad credentials")) {
@@ -422,7 +761,6 @@
         reader.readAsDataURL(file);
     };
 
-    // 上传文件夹
     window.showUploadFolder = function() {
         document.getElementById('ghUploadFolderInput').value = '';
         document.getElementById('ghUploadFolderInput').click();
@@ -457,23 +795,35 @@
                             content: base64
                         })
                     });
-                    if (res.ok) {
-                        count++;
-                    } else {
-                        failed++;
-                    }
+                    if (res.ok) { count++; }
+                    else { failed++; }
                     resolve();
                 };
                 reader.readAsDataURL(file);
             });
         }
         showStatus(`上传完成：${count} 个文件，失败：${failed} 个。`);
-        await loadFiles(curPath); // 修正1：立即刷新
-        // 修正2：上传到空目录时自动删除.keep
-        await tryDeleteKeep(curPath);
+        await loadFiles(curPath);
     };
 
-    // 新建文件
+    window.showNewFile = function() {
+        document.getElementById("ghTopActions").innerHTML = `
+            <input id="newFileName" type="text" style="width:180px;" placeholder="文件名.txt">
+            <button onclick="createFile()" class="save-btn">创建</button>
+            <button onclick="cancelEdit()" class="del-btn">取消</button>
+        `;
+    }
+    window.showNewDir = function() {
+        document.getElementById("ghTopActions").innerHTML = `
+            <input id="newDirName" type="text" style="width:180px;" placeholder="目录名">
+            <button onclick="createDir()" class="save-btn">创建</button>
+            <button onclick="cancelEdit()" class="del-btn">取消</button>
+        `;
+    }
+    window.cancelEdit = function() {
+        showActions();
+    };
+
     window.createFile = async function() {
         let fileName = document.getElementById("newFileName").value.trim();
         if (!fileName) return showStatus("请输入文件名", "#cf222e");
@@ -499,7 +849,9 @@
         const data = await res.json();
         if (res.ok) {
             showStatus("创建成功！");
-            await loadFiles(curPath); // 修正1：立即刷新
+            document.getElementById("newFileName").value = "";
+            showActions();
+            await loadFiles(curPath);
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -510,7 +862,6 @@
         }
     }
 
-    // 新建目录
     window.createDir = async function() {
         let dirName = document.getElementById("newDirName").value.trim();
         if (!dirName) return showStatus("请输入目录名", "#cf222e");
@@ -536,7 +887,9 @@
         const data = await res.json();
         if (res.ok) {
             showStatus("目录创建成功！");
-            await loadFiles(curPath); // 修正1：立即刷新
+            document.getElementById("newDirName").value = "";
+            showActions();
+            await loadFiles(curPath);
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -547,40 +900,6 @@
         }
     }
 
-    // 自动删除.keep文件（修正2）
-    async function tryDeleteKeep(folderPath) {
-        if (!folderPath) return;
-        const api = `https://api.github.com/repos/${owner}/${repo}/contents/${folderPath}?t=${Date.now()}`;
-        const res = await fetch(api);
-        if (!res.ok) return;
-        let files = await res.json();
-        if (!Array.isArray(files)) files = [files];
-        const keepFile = files.find(f => f.name === ".keep" && f.type === "file");
-        // 只在有.keep且有其它文件时才删除.keep
-        if (keepFile && files.length > 1) {
-            token = localStorage.getItem("gh_token") || "";
-            if (!token) {
-                token = await getFullToken();
-                localStorage.setItem("gh_token", token);
-            }
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${keepFile.path}`;
-            await fetch(url, {
-                method: "DELETE",
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                },
-                body: JSON.stringify({
-                    message: `Auto delete .keep after upload in ${folderPath} via manager.html`,
-                    sha: keepFile.sha
-                })
-            });
-            showStatus(".keep 文件已自动删除！");
-            await loadFiles(curPath);
-        }
-    }
-
-    // ...（其它逻辑同原文件）...
     loadFiles();
     </script>
 </body>
