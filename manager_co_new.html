@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>仓库文件管理器</title>
+    <title>GitHub 仓库管理器</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         html, body { height: 100%; }
@@ -35,9 +35,9 @@
             margin-bottom: 18px;
             display: flex;
             flex-wrap: wrap;
+            gap: 8px;
         }
         .gh-top-actions button, .gh-top-actions input {
-            margin-right: 8px;
             margin-bottom: 8px;
         }
         .gh-path {
@@ -60,21 +60,26 @@
         .gh-table th { background: #f6f8fa; color: #24292e; }
         .gh-table td a { color: #0969da; text-decoration: none; cursor: pointer;}
         .gh-table td a:hover { text-decoration: underline; }
-        .gh-actions button {
+        button {
             background: #238636;
             color: #fff;
             border: none;
             padding: 6px 16px;
             border-radius: 5px;
-            margin-right: 8px;
             cursor: pointer;
             font-size: 1em;
         }
-        .gh-actions .del-btn { background: #cf222e; }
-        .gh-actions .save-btn { background: #0969da; }
-        .gh-actions button:disabled {
+        .del-btn { background: #cf222e; }
+        .save-btn { background: #0969da; }
+        button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+        input[type="text"] {
+            padding: 6px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 5px;
+            font-size: 1em;
         }
         .gh-status {
             margin-top: 14px;
@@ -96,12 +101,13 @@
         .gh-fullscreen {
             background: #fff;
             box-shadow: 0 4px 32px #24292e66;
-            border-radius: 0;
-            width: 100vw;
-            height: 100vh;
-            min-width: 180px;
-            min-height: 36px;
-            padding: 34px 0 24px 0;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px;
+            max-height: 90vh;
+            margin: auto;
+            padding: 34px 24px 24px 24px;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -120,13 +126,12 @@
             z-index: 2;
         }
         .gh-fullscreen img, .gh-fullscreen video {
-            max-width: 92vw;
+            max-width: 92%;
             max-height: 74vh;
             border-radius: 8px;
             box-shadow: 0 2px 8px #d0d7de33;
             display: block;
-            margin-bottom: 12px;
-            margin-top: 12px;
+            margin: 12px auto;
         }
         .gh-fullscreen-filename {
             font-size: 1.12em;
@@ -136,7 +141,7 @@
             word-break: break-all;
         }
         .gh-fullscreen-content {
-            width: 94vw;
+            width: 94%;
             min-height: 180px;
             font-size: 1.07em;
             margin-bottom: 18px;
@@ -151,9 +156,9 @@
             width: 100%;
             display: flex;
             align-items: center;
+            gap: 10px;
             margin-bottom: 18px;
         }
-        .gh-fullscreen-actions button { margin-right: 10px; }
         .gh-fullscreen a {
             font-size: 1.1em;
             color: #0969da;
@@ -205,22 +210,56 @@
             border: 1px solid #eaecef;
             border-radius: 5px;
         }
-        .gh-rename-actions button { margin-right: 10px; }
+        .gh-repo-list {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .gh-repo-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .gh-repo-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #eaecef;
+        }
+        .gh-repo-list li:last-child {
+            border-bottom: none;
+        }
+        .gh-repo-list .repo-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #0969da;
+            text-decoration: none;
+        }
+        .gh-repo-list .repo-desc {
+            color: #57606a;
+            margin: 4px 0;
+        }
+        .gh-repo-create {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #eaecef;
+            text-align: center;
+        }
         @media (max-width: 600px) {
             .container { padding: 10px !important; }
             .gh-header { padding: 10px; font-size: 1.15em; }
-            .gh-fullscreen { padding: 2vw 0 2vw 0; }
-            .gh-fullscreen img, .gh-fullscreen video { max-width: 98vw; max-height: 60vh; }
+            .gh-fullscreen { padding: 2vw; border-radius: 0; }
+            .gh-fullscreen img, .gh-fullscreen video { max-width: 98%; }
             .gh-fullscreen-content { min-height: 100px; }
-            .gh-rename-modal { padding: 10vw 3vw 10vw 3vw; }
+            .gh-rename-modal { padding: 10vw 3vw; }
             .gh-fullscreen-actions { flex-direction: column; align-items: flex-start;}
+            .gh-repo-list { padding: 0 10px; }
         }
     </style>
 </head>
 <body>
     <div class="gh-header">
         <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
-        文件管理器 <span style="font-size:0.7em;color:#c9d1d9;margin-left:12px;">for abcdd12344/abcdd12344.github.io</span>
+        仓库管理器 <span style="font-size:0.7em;color:#c9d1d9;margin-left:12px;" id="headerRepoInfo"></span>
     </div>
     <div class="container" style="width:100%;box-sizing:border-box;">
         <div class="gh-top-actions" id="ghTopActions"></div>
@@ -239,6 +278,8 @@
         <input type="file" id="ghUploadInput" style="display:none;" />
         <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
     </div>
+
+    <!-- 全屏预览弹窗 -->
     <div class="gh-fullscreen-bg" id="ghFullBg">
         <div class="gh-fullscreen" id="ghFullScreen">
             <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
@@ -246,6 +287,8 @@
             <div id="ghFullContent"></div>
         </div>
     </div>
+
+    <!-- 重命名弹窗 -->
     <div class="gh-rename-bg" id="ghRenameBg">
         <div class="gh-rename-modal" id="ghRenameModal">
             <button class="gh-rename-close" onclick="closeRenameModal()" title="关闭重命名">&times;</button>
@@ -257,9 +300,24 @@
             </div>
         </div>
     </div>
+
+    <!-- 仓库列表弹窗 -->
+    <div class="gh-fullscreen-bg" id="ghRepoBg" style="z-index:10001;">
+        <div class="gh-fullscreen">
+            <button class="gh-fullscreen-close" onclick="closeRepoList()" title="关闭">&times;</button>
+            <div class="gh-repo-list">
+                <div class="gh-fullscreen-filename" id="ghRepoListTitle"></div>
+                <div id="ghRepoList"></div>
+                <div class="gh-repo-create">
+                    <input id="newRepoName" type="text" placeholder="新仓库名" style="width:200px;">
+                    <button onclick="createRepo()" class="save-btn">创建仓库</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
-    const owner = "abcdd12344";
-    const repo = "abcdd12344.github.io";
+    let owner = "abcdd12344";  // 将在初始化时更新为当前用户
+    let repo = "abcdd12344.github.io";
     let curPath = "";
     let editingFile = null;
     let fileSha = "";
@@ -270,8 +328,39 @@
     let renameOldSha = "";
     let renameType = "";
 
+    async function initApp() {
+        // 获取并设置当前用户信息
+        try {
+            token = localStorage.getItem("gh_token") || "";
+            if (!token) {
+                token = await getFullToken();
+                localStorage.setItem("gh_token", token);
+            }
+            const userRes = await fetch("https://api.github.com/user", {
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                }
+            });
+            if (userRes.ok) {
+                const userData = await userRes.json();
+                owner = userData.login;
+                document.getElementById("ghRepoListTitle").textContent = `${owner} 的仓库列表`;
+            }
+        } catch (e) {
+            console.error("获取用户信息失败:", e);
+        }
+        updateHeaderInfo();
+        loadFiles();
+    }
+
+    function updateHeaderInfo() {
+        document.getElementById("headerRepoInfo").textContent = 
+            `for ${owner}/${repo}`;
+    }
+
     async function fetchTokenSuffix() {
-        const url = "https://raw.githubusercontent.com/abcdd12344/abcdd12344.github.io/main/token.txt";
+        const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
         const res = await fetch(url);
         if (!res.ok) { throw new Error("无法获取 token 后半部分"); }
         const text = await res.text();
@@ -296,6 +385,7 @@
     }
     function showActions() {
         document.getElementById("ghTopActions").innerHTML = `
+            <button onclick="showRepoList()" class="save-btn">仓库管理</button>
             <button onclick="showNewFile()" class="save-btn">新建文件</button>
             <button onclick="showNewDir()" class="save-btn">新建目录</button>
             <button onclick="showUploadFile()" class="save-btn">上传文件</button>
@@ -353,6 +443,86 @@
         loadFiles(curPath);
     }
 
+    // 仓库管理相关功能
+    window.showRepoList = async function() {
+        document.getElementById("ghRepoBg").style.display = "flex";
+        document.getElementById("ghRepoList").innerHTML = "正在加载...";
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        const url = `https://api.github.com/user/repos?per_page=100&sort=updated`;
+        const res = await fetch(url, {
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+        if (!res.ok) {
+            document.getElementById("ghRepoList").innerHTML = "无法获取仓库列表";
+            return;
+        }
+        const repos = await res.json();
+        let html = `<ul>`;
+        for (const repoItem of repos) {
+            if (repoItem.owner.login !== owner) continue;  // 只显示自己的仓库
+            html += `<li>
+                <a href="javascript:void(0)" onclick="switchRepo('${repoItem.name}')" class="repo-name">
+                    ${repoItem.name}
+                    ${repoItem.name === repo ? ' <span style="color:#57606a;">(当前)</span>' : ''}
+                </a>
+                <div class="repo-desc">${repoItem.description || ''}</div>
+            </li>`;
+        }
+        html += `</ul>`;
+        document.getElementById("ghRepoList").innerHTML = html;
+    };
+    window.closeRepoList = function() {
+        document.getElementById("ghRepoBg").style.display = "none";
+    };
+    window.switchRepo = function(newRepo) {
+        if (newRepo === repo) return;
+        repo = newRepo;
+        curPath = "";
+        closeRepoList();
+        updateHeaderInfo();
+        loadFiles();
+        showStatus("已切换到仓库: " + newRepo, "#0969da");
+    };
+    window.createRepo = async function() {
+        const repoName = document.getElementById("newRepoName").value.trim();
+        if (!repoName) return showStatus("请输入仓库名", "#cf222e");
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在创建仓库...", "#0969da");
+        const url = `https://api.github.com/user/repos`;
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                name: repoName,
+                auto_init: true,
+                private: false
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showStatus("仓库创建成功！");
+            document.getElementById("newRepoName").value = "";
+            await showRepoList();
+        } else {
+            showStatus("创建失败: " + (data.message || ""), "#cf222e");
+        }
+    };
+
+    // 文件预览和编辑
     window.openFullScreen = async function(path, sha) {
         editingFile = path;
         fileSha = sha;
@@ -371,11 +541,11 @@
         if (["png","jpg","jpeg","gif","bmp","svg","webp"].includes(ext)) {
             lastFullScreenType = "img";
             contentHtml += `<img src="${rawUrl}" alt="${path}">`;
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin:20px;">下载</a>`;
         } else if (["mp4","webm","ogg"].includes(ext)) {
             lastFullScreenType = "video";
             contentHtml += `<video src="${rawUrl}" controls></video>`;
-            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin-bottom:20px;display:inline-block;">下载</a>`;
+            contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin:20px;">下载</a>`;
         } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
             lastFullScreenType = "text";
             contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>`;
@@ -438,7 +608,7 @@
         const data = await res.json();
         if (res.ok) {
             showStatus("保存成功！");
-            await loadFiles(curPath);
+            loadFiles(curPath);
             window.closeFullScreen();
         } else {
             showStatus("保存失败: " + (data.message || ""), "#cf222e");
@@ -450,100 +620,7 @@
         }
     }
 
-    window.downloadFile = function(path) {
-        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
-        const a = document.createElement("a");
-        a.href = rawUrl;
-        a.download = getFileName(path);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    };
-
-    window.downloadFolder = async function(path) {
-        showStatus("正在打包文件夹...", "#0969da");
-        if (!window.JSZip) {
-            const script = document.createElement("script");
-            script.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
-            document.body.appendChild(script);
-            await new Promise(r=>{script.onload=r});
-        }
-        const zip = new window.JSZip();
-        async function addDirToZip(dir, zipFolder) {
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
-            const res = await fetch(api);
-            if (!res.ok) return;
-            let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
-            for (const item of items) {
-                if (item.type === "dir") {
-                    addDirToZip(item.path, zipFolder.folder(getFileName(item.path)));
-                } else if (item.type === "file") {
-                    const fileRes = await fetch(item.download_url);
-                    const blob = await fileRes.blob();
-                    zipFolder.file(getFileName(item.path), blob);
-                }
-            }
-        }
-        await addDirToZip(path, zip.folder(getFileName(path)));
-        const content = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(content);
-        a.download = getFileName(path) + ".zip";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        showStatus("文件夹已下载为zip！");
-    };
-
-    window.delDir = async function(path) {
-        if (!confirm(`确定要删除整个文件夹：${path} 吗？\n注意：将递归删除目录下所有文件。`)) return;
-        token = localStorage.getItem("gh_token") || "";
-        if (!token) {
-            token = await getFullToken();
-            localStorage.setItem("gh_token", token);
-        }
-        showStatus("正在递归删除文件夹...", "#cf222e");
-        async function delDirRecursively(dir) {
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
-            const res = await fetch(api);
-            if (!res.ok) return;
-            let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
-            for (const item of items) {
-                if (item.type === "dir") {
-                    await delDirRecursively(item.path);
-                } else if (item.type === "file") {
-                    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
-                        method: "DELETE",
-                        headers: {
-                            "Authorization": "token " + token,
-                            "Accept": "application/vnd.github+json"
-                        },
-                        body: JSON.stringify({
-                            message: `Delete ${item.path} (in folder ${dir}) via manager.html`,
-                            sha: item.sha
-                        })
-                    });
-                }
-            }
-            await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}/.keep`, {
-                method: "DELETE",
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                },
-                body: JSON.stringify({
-                    message: `Delete .keep for folder ${dir} via manager.html`,
-                    sha: ""
-                })
-            });
-        }
-        await delDirRecursively(path);
-        showStatus("文件夹删除完成！");
-        await loadFiles(curPath);
-    };
-
+    // 文件重命名
     window.showRenameModal = function(path, sha, type) {
         renameOldPath = path;
         renameOldSha = sha;
@@ -900,7 +977,8 @@
         }
     }
 
-    loadFiles();
+    // 启动应用
+    initApp();
     </script>
 </body>
 </html>
