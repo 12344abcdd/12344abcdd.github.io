@@ -244,6 +244,62 @@
             border-top: 1px solid #eaecef;
             text-align: center;
         }
+        .gh-fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+        }
+        
+        .gh-fullscreen-content {
+            width: 98% !important;
+            height: calc(100vh - 160px) !important;
+            margin: 10px auto !important;
+            font-family: monospace !important;
+            line-height: 1.5 !important;
+        }
+
+        .gh-repo-actions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eaecef;
+        }
+
+        .gh-repo-actions button {
+            margin: 5px;
+        }
+
+        .gh-settings-modal {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 32px #24292e66;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .gh-settings-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaecef;
+        }
+
+        .gh-settings-section:last-child {
+            border-bottom: none;
+        }
+
+        .gh-settings-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #24292e;
+        }
         @media (max-width: 600px) {
             .container { padding: 10px !important; }
             .gh-header { padding: 10px; font-size: 1.15em; }
