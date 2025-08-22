@@ -371,6 +371,16 @@
             </div>
         </div>
     </div>
+    <!-- Add Repository Settings Modal -->
+    <div class="gh-fullscreen-bg" id="ghSettingsBg" style="z-index:10002;">
+        <div class="gh-settings-modal">
+            <button class="gh-fullscreen-close" onclick="closeSettings()" title="关闭">&times;</button>
+            <div class="gh-settings-section">
+                <div class="gh-settings-title">仓库设置</div>
+                <div id="ghSettingsContent"></div>
+            </div>
+        </div>
+    </div>
     <script>
     let owner = "abcdd12344";  // 将在初始化时更新为当前用户
     let repo = "abcdd12344.github.io";
