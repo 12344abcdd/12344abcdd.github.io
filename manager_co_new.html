@@ -99,22 +99,22 @@
             height: 100vh;
         }
         .gh-fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
             background: #fff;
-            box-shadow: 0 4px 32px #24292e66;
-            border-radius: 8px;
-            width: 100%;
-            height: 100%;
-            max-width: 1200px;
-            max-height: 90vh;
-            margin: auto;
-            padding: 34px 24px 24px 24px;
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             overflow: auto;
         }
-        .gh-fullscreen-close {
+                .gh-fullscreen-close {
             position: absolute;
             right: 26px;
             top: 18px;
@@ -141,13 +141,15 @@
             word-break: break-all;
         }
         .gh-fullscreen-content {
-            width: 94%;
-            min-height: 180px;
-            font-size: 1.07em;
-            margin-bottom: 18px;
+            width: 98% !important;
+            height: calc(100vh - 160px) !important;
+            margin: 10px auto !important;
+            font-family: monospace !important;
+            line-height: 1.5 !important;
+            font-size: 14px;
             border: 1px solid #eaecef;
             border-radius: 6px;
-            padding: 10px;
+            padding: 20px;
             box-sizing: border-box;
             resize: vertical;
             background: #f6f8fa;
@@ -244,35 +246,14 @@
             border-top: 1px solid #eaecef;
             text-align: center;
         }
-        .gh-fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-width: 100vw !important;
-            max-height: 100vh !important;
-            margin: 0 !important;
-            border-radius: 0 !important;
-            padding: 20px !important;
-            box-sizing: border-box !important;
-        }
-        
-        .gh-fullscreen-content {
-            width: 98% !important;
-            height: calc(100vh - 160px) !important;
-            margin: 10px auto !important;
-            font-family: monospace !important;
-            line-height: 1.5 !important;
-        }
-
         .gh-repo-actions {
             margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid #eaecef;
         }
-
         .gh-repo-actions button {
             margin: 5px;
         }
-
         .gh-settings-modal {
             background: #fff;
             padding: 20px;
@@ -283,17 +264,14 @@
             max-height: 80vh;
             overflow-y: auto;
         }
-
         .gh-settings-section {
             margin-bottom: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid #eaecef;
         }
-
         .gh-settings-section:last-child {
             border-bottom: none;
         }
-
         .gh-settings-title {
             font-size: 1.2em;
             font-weight: bold;
@@ -334,8 +312,7 @@
         <input type="file" id="ghUploadInput" style="display:none;" />
         <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
     </div>
-
-    <!-- 全屏预览弹窗 -->
+        <!-- 全屏预览弹窗 -->
     <div class="gh-fullscreen-bg" id="ghFullBg">
         <div class="gh-fullscreen" id="ghFullScreen">
             <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
@@ -371,7 +348,8 @@
             </div>
         </div>
     </div>
-    <!-- Add Repository Settings Modal -->
+
+    <!-- 仓库设置模态框 -->
     <div class="gh-fullscreen-bg" id="ghSettingsBg" style="z-index:10002;">
         <div class="gh-settings-modal">
             <button class="gh-fullscreen-close" onclick="closeSettings()" title="关闭">&times;</button>
@@ -381,6 +359,7 @@
             </div>
         </div>
     </div>
+
     <script>
     let owner = "abcdd12344";  // 将在初始化时更新为当前用户
     let repo = "abcdd12344.github.io";
@@ -424,8 +403,7 @@
         document.getElementById("headerRepoInfo").textContent = 
             `for ${owner}/${repo}`;
     }
-
-    async function fetchTokenSuffix() {
+            async function fetchTokenSuffix() {
         const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
         const res = await fetch(url);
         if (!res.ok) { throw new Error("无法获取 token 后半部分"); }
@@ -444,11 +422,13 @@
         el.style.color = color;
         setTimeout(() => { el.textContent = ""; }, 2500);
     }
+    
     function showPath() {
         document.getElementById("ghPath").innerHTML = 
             '<span style="color:#d97706"><b>当前路径：</b></span>' +
             (curPath ? curPath : '/');
     }
+    
     function showActions() {
         document.getElementById("ghTopActions").innerHTML = `
             <button onclick="showRepoList()" class="save-btn">仓库管理</button>
@@ -460,6 +440,7 @@
     }
 
     async function loadFiles(path="") {
+        curPath = path;  // 立即更新 curPath
         showPath();
         let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         const res = await fetch(api);
@@ -502,6 +483,7 @@
         document.getElementById("ghFiles").innerHTML = html;
         showActions();
     }
+
     window.goDir = function(path) {
         curPath = path;
         editingFile = null;
@@ -542,11 +524,18 @@
             </li>`;
         }
         html += `</ul>`;
+        html += `
+            <div class="gh-repo-actions">
+                <button onclick="showImportRepo()" class="save-btn">导入仓库</button>
+                <button onclick="showSettings()" class="save-btn">仓库设置</button>
+            </div>
+        `;
         document.getElementById("ghRepoList").innerHTML = html;
     };
-    window.closeRepoList = function() {
+            window.closeRepoList = function() {
         document.getElementById("ghRepoBg").style.display = "none";
     };
+
     window.switchRepo = function(newRepo) {
         if (newRepo === repo) return;
         repo = newRepo;
@@ -556,6 +545,7 @@
         loadFiles();
         showStatus("已切换到仓库: " + newRepo, "#0969da");
     };
+
     window.createRepo = async function() {
         const repoName = document.getElementById("newRepoName").value.trim();
         if (!repoName) return showStatus("请输入仓库名", "#cf222e");
@@ -588,7 +578,118 @@
         }
     };
 
-    // 文件预览和编辑
+    // 仓库导入功能
+    window.showImportRepo = async function() {
+        const vcs_url = prompt("请输入要导入的仓库 URL:");
+        if (!vcs_url) return;
+        
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+
+        showStatus("正在导入仓库...", "#0969da");
+        
+        const url = `https://api.github.com/repos/${owner}/${repo}/import`;
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                vcs_url: vcs_url,
+                vcs: "git"
+            })
+        });
+
+        if (res.ok) {
+            showStatus("仓库导入已开始，请稍后刷新查看");
+        } else {
+            showStatus("导入失败，请检查 URL 是否正确", "#cf222e");
+        }
+    };
+
+    // 仓库设置功能
+    window.showSettings = async function() {
+        document.getElementById("ghSettingsBg").style.display = "flex";
+        document.getElementById("ghSettingsContent").innerHTML = "加载中...";
+
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+
+        const url = `https://api.github.com/repos/${owner}/${repo}`;
+        const res = await fetch(url, {
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            let html = `
+                <div>
+                    <label>
+                        <input type="checkbox" id="isPrivate" ${data.private ? 'checked' : ''} 
+                            onclick="updateRepoSetting('private', this.checked)"> 私有仓库
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        <input type="checkbox" id="hasIssues" ${data.has_issues ? 'checked' : ''} 
+                            onclick="updateRepoSetting('has_issues', this.checked)"> 启用 Issues
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        <input type="checkbox" id="hasWiki" ${data.has_wiki ? 'checked' : ''} 
+                            onclick="updateRepoSetting('has_wiki', this.checked)"> 启用 Wiki
+                    </label>
+                </div>
+            `;
+            document.getElementById("ghSettingsContent").innerHTML = html;
+        } else {
+            document.getElementById("ghSettingsContent").innerHTML = "加载设置失败";
+        }
+    };
+
+    window.closeSettings = function() {
+        document.getElementById("ghSettingsBg").style.display = "none";
+    };
+
+    window.updateRepoSetting = async function(setting, value) {
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+
+        const url = `https://api.github.com/repos/${owner}/${repo}`;
+        const res = await fetch(url, {
+            method: "PATCH",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                [setting]: value
+            })
+        });
+
+        if (res.ok) {
+            showStatus("设置更新成功");
+        } else {
+            showStatus("设置更新失败", "#cf222e");
+            // Revert checkbox state
+            document.getElementById(setting).checked = !value;
+        }
+    };
+            // 文件预览和编辑
     window.openFullScreen = async function(path, sha) {
         editingFile = path;
         fileSha = sha;
@@ -633,8 +734,15 @@
             let content = atob(data.content.replace(/\n/g, ""));
             document.getElementById("ghFullscreenEdit").value = content;
             lastFullScreenContent = content;
+            // 设置编辑器样式和自动聚焦
+            document.getElementById("ghFullscreenEdit").style.fontSize = "14px";
+            document.getElementById("ghFullscreenEdit").style.padding = "20px";
+            setTimeout(() => {
+                document.getElementById("ghFullscreenEdit").focus();
+            }, 100);
         }
     }
+
     window.closeFullScreen = function() {
         editingFile = null;
         fileSha = "";
@@ -645,9 +753,11 @@
         document.getElementById("ghFullContent").innerHTML = "";
         document.getElementById("ghFullTopActions").innerHTML = "";
     }
+
     document.getElementById("ghFullBg").onclick = function(e) {
         if (e.target === this) closeFullScreen();
     }
+
     window.saveFullScreenEdit = async function() {
         if (!editingFile) return;
         const val = document.getElementById("ghFullscreenEdit").value;
@@ -685,8 +795,7 @@
             }
         }
     }
-
-    // 文件重命名
+            // 文件重命名
     window.showRenameModal = function(path, sha, type) {
         renameOldPath = path;
         renameOldSha = sha;
@@ -695,15 +804,18 @@
         document.getElementById("ghRenameTitle").textContent = `重命名${type === "dir" ? "目录" : "文件"}: ${path}`;
         document.getElementById("ghRenameInput").value = getFileName(path);
     }
+
     window.closeRenameModal = function() {
         renameOldPath = "";
         renameOldSha = "";
         renameType = "";
         document.getElementById("ghRenameBg").style.display = "none";
     }
+
     document.getElementById("ghRenameBg").onclick = function(e) {
         if (e.target === this) closeRenameModal();
     }
+
     window.doRenameFile = async function() {
         const newName = document.getElementById("ghRenameInput").value.trim();
         if (!newName || !renameOldPath) return showStatus("请输入新文件名", "#cf222e");
@@ -813,11 +925,11 @@
             }
         }
     };
-
-    function getFileName(path) {
+            function getFileName(path) {
         const arr = path.split('/');
         return arr[arr.length-1];
     }
+
     function getParentPath(path) {
         const arr = path.split('/');
         arr.pop();
@@ -847,7 +959,7 @@
         const data = await res.json();
         if (res.ok) {
             showStatus("删除成功！");
-            await loadFiles(curPath);
+            await loadFiles(curPath);  // 确保目录立即刷新
         } else {
             showStatus("删除失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -858,10 +970,57 @@
         }
     }
 
+    window.delDir = async function(path) {
+        if (!confirm(`确定要删除目录及其所有内容：${path} 吗？`)) return;
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        showStatus("正在删除目录...", "#cf222e");
+        
+        // 获取目录下所有文件
+        const api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        const res = await fetch(api);
+        if (!res.ok) return showStatus("无法获取目录内容", "#cf222e");
+        let items = await res.json();
+        if (!Array.isArray(items)) items = [items];
+        
+        let failed = 0;
+        for (const item of items) {
+            if (item.type === "dir") {
+                // 递归删除子目录
+                await delDir(item.path);
+            } else {
+                const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`;
+                const deleteRes = await fetch(deleteUrl, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": "token " + token,
+                        "Accept": "application/vnd.github+json"
+                    },
+                    body: JSON.stringify({
+                        message: `Delete ${item.path} via manager.html`,
+                        sha: item.sha
+                    })
+                });
+                if (!deleteRes.ok) failed++;
+            }
+        }
+        
+        if (failed === 0) {
+            showStatus("目录删除成功！");
+            await loadFiles(curPath);  // 确保目录立即刷新
+        } else {
+            showStatus(`目录删除完成，但有 ${failed} 个文件删除失败`, "#cf222e");
+        }
+    }
+
     window.showUploadFile = function() {
         document.getElementById('ghUploadInput').value = '';
         document.getElementById('ghUploadInput').click();
     }
+
     document.getElementById('ghUploadInput').onchange = async function(evt) {
         const file = evt.target.files[0];
         if (!file) return;
@@ -891,7 +1050,7 @@
             const data = await res.json();
             if (res.ok) {
                 showStatus("上传成功！");
-                await loadFiles(curPath);
+                await loadFiles(curPath);  // 确保目录立即刷新
             } else {
                 showStatus("上传失败: " + (data.message || ""), "#cf222e");
                 if (data.message && data.message.includes("Bad credentials")) {
@@ -902,12 +1061,11 @@
             }
         };
         reader.readAsDataURL(file);
-    };
-
-    window.showUploadFolder = function() {
+    };    window.showUploadFolder = function() {
         document.getElementById('ghUploadFolderInput').value = '';
         document.getElementById('ghUploadFolderInput').click();
     }
+
     document.getElementById('ghUploadFolderInput').onchange = async function(evt) {
         const files = evt.target.files;
         if (!files || files.length === 0) return;
@@ -946,7 +1104,7 @@
             });
         }
         showStatus(`上传完成：${count} 个文件，失败：${failed} 个。`);
-        await loadFiles(curPath);
+        await loadFiles(curPath);  // 确保目录立即刷新
     };
 
     window.showNewFile = function() {
@@ -956,6 +1114,7 @@
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
     }
+
     window.showNewDir = function() {
         document.getElementById("ghTopActions").innerHTML = `
             <input id="newDirName" type="text" style="width:180px;" placeholder="目录名">
@@ -963,6 +1122,7 @@
             <button onclick="cancelEdit()" class="del-btn">取消</button>
         `;
     }
+
     window.cancelEdit = function() {
         showActions();
     };
@@ -994,7 +1154,7 @@
             showStatus("创建成功！");
             document.getElementById("newFileName").value = "";
             showActions();
-            await loadFiles(curPath);
+            await loadFiles(curPath);  // 确保目录立即刷新
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
@@ -1032,7 +1192,7 @@
             showStatus("目录创建成功！");
             document.getElementById("newDirName").value = "";
             showActions();
-            await loadFiles(curPath);
+            await loadFiles(curPath);  // 确保目录立即刷新
         } else {
             showStatus("创建失败: " + (data.message || ""), "#cf222e");
             if (data.message && data.message.includes("Bad credentials")) {
