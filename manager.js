@@ -11,6 +11,7 @@ let renameOldSha = "";
 let renameType = "";
 let token = localStorage.getItem("gh_token") || "";
 
+// 获取 token，支持私有仓库
 async function fetchTokenSuffix() {
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
     const res = await fetch(url);
@@ -23,6 +24,7 @@ async function getFullToken() {
     return "ghp_" + suffix;
 }
 
+// 获取文件最近一次提交消息
 async function fetchLatestCommitMsg(path) {
     const commitUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`;
     const res = await fetch(commitUrl, {
@@ -40,6 +42,7 @@ async function fetchLatestCommitMsg(path) {
     return "";
 }
 
+// 初始化
 async function initApp() {
     try {
         token = localStorage.getItem("gh_token") || "";
@@ -72,7 +75,7 @@ function showStatus(msg, color="#238636") {
     const el = document.getElementById("ghStatus");
     el.textContent = msg;
     el.style.color = color;
-    setTimeout(() => { el.textContent = ""; }, 2500);
+    setTimeout(() => { el.textContent = ""; }, 3000);
 }
 function showPath() {
     document.getElementById("ghPath").innerHTML =
@@ -89,6 +92,7 @@ function showActions() {
     `;
 }
 
+// 文件列表及提交消息、解压按钮
 async function loadFiles(path="") {
     curPath = path;
     showPath();
@@ -153,6 +157,55 @@ async function loadFiles(path="") {
     document.getElementById("ghFiles").innerHTML = html;
     showActions();
 }
+
+// 解压 zip 文件到仓库
+window.decompressFile = async function(path) {
+    const ext = path.split('.').pop().toLowerCase();
+    if (ext !== "zip") return showStatus("只支持 zip 文件解压","#cf222e");
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    const res = await fetch(url, {
+        headers: {
+            "Authorization": token ? "token " + token : undefined,
+            "Accept": "application/vnd.github+json"
+        }
+    });
+    if (!res.ok) return showStatus("读取文件失败","#cf222e");
+    const data = await res.json();
+    const content = atob(data.content.replace(/\n/g, ""));
+    const zip = new JSZip();
+    await zip.loadAsync(content);
+
+    let uploadCount = 0, failCount = 0;
+    let decompressPath = curPath;
+
+    const promises = [];
+    zip.forEach(function(relPath, file) {
+        if (!file.dir) {
+            promises.push(file.async("base64").then(async function(fileContent) {
+                let targetPath = decompressPath ? decompressPath + "/" + relPath : relPath;
+                const uploadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${targetPath}`;
+                const uploadRes = await fetch(uploadUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": "token " + token,
+                        "Accept": "application/vnd.github+json"
+                    },
+                    body: JSON.stringify({
+                        message: `解压 ${path} 自动上传 ${relPath} via manager.html`,
+                        content: fileContent
+                    })
+                });
+                if (uploadRes.ok) uploadCount++;
+                else failCount++;
+            }));
+        }
+    });
+    await Promise.all(promises);
+    showStatus(`解压完成: ${uploadCount} 文件, 失败: ${failCount}`);
+    await loadFiles(curPath);
+}
+
+// 其它 window.xx 方法（如全屏编辑、重命名、删除、上传、压缩、仓库管理等）请用你的原始 manager.js 内容保持完整。
 
 
     window.goDir = function(path) {
@@ -1011,3 +1064,4 @@ async function loadFiles(path="") {
 
     // 启动应用
     initApp();
+
