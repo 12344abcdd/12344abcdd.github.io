@@ -11,7 +11,7 @@ let renameOldSha = "";
 let renameType = "";
 let token = localStorage.getItem("gh_token") || "";
 
-// 获取 token，支持私有仓库
+// 获取 token
 async function fetchTokenSuffix() {
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
     const res = await fetch(url);
@@ -24,7 +24,7 @@ async function getFullToken() {
     return "ghp_" + suffix;
 }
 
-// 获取文件最近一次提交消息
+// 获取最近一次提交消息
 async function fetchLatestCommitMsg(path) {
     const commitUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`;
     const res = await fetch(commitUrl, {
@@ -92,7 +92,7 @@ function showActions() {
     `;
 }
 
-// 文件列表及提交消息、解压按钮
+// 文件列表
 async function loadFiles(path="") {
     curPath = path;
     showPath();
@@ -158,10 +158,11 @@ async function loadFiles(path="") {
     showActions();
 }
 
-// 解压 zip 文件到仓库
+// 解压 zip 文件并上传到仓库
 window.decompressFile = async function(path) {
     const ext = path.split('.').pop().toLowerCase();
     if (ext !== "zip") return showStatus("只支持 zip 文件解压","#cf222e");
+    showStatus("正在解压并上传...", "#0969da");
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
     const res = await fetch(url, {
         headers: {
@@ -177,7 +178,6 @@ window.decompressFile = async function(path) {
 
     let uploadCount = 0, failCount = 0;
     let decompressPath = curPath;
-
     const promises = [];
     zip.forEach(function(relPath, file) {
         if (!file.dir) {
@@ -205,7 +205,7 @@ window.decompressFile = async function(path) {
     await loadFiles(curPath);
 }
 
-// 其它 window.xx 方法（如全屏编辑、重命名、删除、上传、压缩、仓库管理等）请用你的原始 manager.js 内容保持完整。
+// 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
 
 
     window.goDir = function(path) {
@@ -1064,4 +1064,5 @@ window.decompressFile = async function(path) {
 
     // 启动应用
     initApp();
+
 
