@@ -11,7 +11,6 @@ let renameOldSha = "";
 let renameType = "";
 let token = localStorage.getItem("gh_token") || "";
 
-// 获取 token
 async function fetchTokenSuffix() {
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
     const res = await fetch(url);
@@ -23,8 +22,6 @@ async function getFullToken() {
     const suffix = await fetchTokenSuffix();
     return "ghp_" + suffix;
 }
-
-// 获取最近一次提交消息
 async function fetchLatestCommitMsg(path) {
     const commitUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`;
     const res = await fetch(commitUrl, {
@@ -41,8 +38,6 @@ async function fetchLatestCommitMsg(path) {
     }
     return "";
 }
-
-// 初始化
 async function initApp() {
     try {
         token = localStorage.getItem("gh_token") || "";
@@ -67,7 +62,6 @@ async function initApp() {
     updateHeaderInfo();
     loadFiles();
 }
-
 function updateHeaderInfo() {
     document.getElementById("headerRepoInfo").textContent = `for ${owner}/${repo}`;
 }
@@ -91,8 +85,6 @@ function showActions() {
         <button onclick="showUploadFolder()" class="save-btn">上传文件夹</button>
     `;
 }
-
-// 文件列表
 async function loadFiles(path="") {
     curPath = path;
     showPath();
@@ -132,6 +124,12 @@ async function loadFiles(path="") {
         if (f.type === "file" && f.name.toLowerCase().endsWith(".zip")) {
             decompressBtn = `<button onclick="decompressFile('${f.path}')" class="save-btn">解压</button>`;
         }
+        let compressBtn = "";
+        if (f.type === "dir") {
+            compressBtn = `<button onclick="compressFolder('${f.path}')" class="save-btn">压缩目录</button>`;
+        } else if (f.type === "file") {
+            compressBtn = `<button onclick="compressFile('${f.path}')" class="save-btn">压缩</button>`;
+        }
         html += `<tr>
             <td>${f.type === "dir" ? "📁" : "📄"}</td>
             <td class="file-name">
@@ -143,13 +141,13 @@ async function loadFiles(path="") {
                 <button onclick="showRenameModal('${f.path}','${f.sha}','file')" class="save-btn">重命名</button>
                 <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
                 <button onclick="downloadFile('${f.path}')" class="save-btn">下载</button>
-                <button onclick="compressFile('${f.path}')" class="save-btn">压缩</button>
+                ${compressBtn}
                 ${decompressBtn}
             ` : `
                 <button onclick="showRenameModal('${f.path}','','dir')" class="save-btn">重命名</button>
                 <button onclick="delDir('${f.path}')" class="del-btn">删除</button>
                 <button onclick="downloadFolder('${f.path}')" class="save-btn">下载</button>
-                <button onclick="compressFolder('${f.path}')" class="save-btn">压缩目录</button>
+                ${compressBtn}
             `}
             </td>
         </tr>`;
@@ -157,6 +155,103 @@ async function loadFiles(path="") {
     document.getElementById("ghFiles").innerHTML = html;
     showActions();
 }
+
+// 压缩单个文件并上传 zip 到仓库
+window.compressFile = async function(path) {
+    showStatus("正在压缩文件...", "#0969da");
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    const res = await fetch(url, {
+        headers: {
+            "Authorization": token ? "token " + token : undefined,
+            "Accept": "application/vnd.github+json"
+        }
+    });
+    if (!res.ok) return showStatus("读取文件失败","#cf222e");
+    const data = await res.json();
+    const fileName = path.split('/').pop();
+    const content = atob(data.content.replace(/\n/g, ""));
+    const zip = new JSZip();
+    zip.file(fileName, content);
+    const zipBase64 = await zip.generateAsync({type:"base64"});
+    // 上传 zip 到仓库
+    let zipPath = (curPath ? curPath + "/" : "") + fileName + ".zip";
+    const uploadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${zipPath}`;
+    const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+            "Authorization": "token " + token,
+            "Accept": "application/vnd.github+json"
+        },
+        body: JSON.stringify({
+            message: `压缩 ${path} 到 ${zipPath} via manager.html`,
+            content: zipBase64
+        })
+    });
+    if (uploadRes.ok) {
+        showStatus("压缩并上传成功！");
+        await loadFiles(curPath);
+    } else {
+        showStatus("压缩上传失败","#cf222e");
+    }
+};
+
+// 压缩整个目录并上传 zip 到仓库
+window.compressFolder = async function(path) {
+    showStatus("正在打包目录...", "#0969da");
+    // 递归读取所有文件
+    async function addToZip(zip, dirPath, relPathPrefix) {
+        const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dirPath}`;
+        const res = await fetch(api, {
+            headers: {
+                "Authorization": token ? "token " + token : undefined,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+        if (!res.ok) return;
+        let items = await res.json();
+        if (!Array.isArray(items)) items = [items];
+        for (const item of items) {
+            if (item.type === "dir") {
+                await addToZip(zip, item.path, relPathPrefix + item.name + "/");
+            } else {
+                const fileRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
+                    headers: {
+                        "Authorization": token ? "token " + token : undefined,
+                        "Accept": "application/vnd.github+json"
+                    }
+                });
+                if (!fileRes.ok) continue;
+                const fileData = await fileRes.json();
+                const content = atob(fileData.content.replace(/\n/g, ""));
+                zip.file(relPathPrefix + item.name, content);
+            }
+        }
+    }
+    const zip = new JSZip();
+    await addToZip(zip, path, "");
+    const zipBase64 = await zip.generateAsync({type:"base64"});
+    const folderName = path.split('/').pop();
+    let zipPath = (curPath ? curPath + "/" : "") + folderName + ".zip";
+    const uploadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${zipPath}`;
+    const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+            "Authorization": "token " + token,
+            "Accept": "application/vnd.github+json"
+        },
+        body: JSON.stringify({
+            message: `压缩目录 ${path} 到 ${zipPath} via manager.html`,
+            content: zipBase64
+        })
+    });
+    if (uploadRes.ok) {
+        showStatus("目录压缩并上传成功！");
+        await loadFiles(curPath);
+    } else {
+        showStatus("目录压缩上传失败","#cf222e");
+    }
+};
+
 
 // 解压 zip 文件并上传到仓库
 window.decompressFile = async function(path) {
@@ -205,7 +300,8 @@ window.decompressFile = async function(path) {
     await loadFiles(curPath);
 }
 
-// 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
+// 其它 window.xx 方法（如全屏编辑、重命名、删除、上传、仓库管理等）请用你的原始 manager.js 内容保持完整
+
 
 
     window.goDir = function(path) {
@@ -232,7 +328,7 @@ window.decompressFile = async function(path) {
             }
         });
         if (!res.ok) {
-            document.getElementById("ghRepoList").innerHTML = "无法获取仓库列表";
+           document.getElementById("ghRepoList").innerHTML = "无法获取仓库列表";
             return;
         }
         const repos = await res.json();
@@ -1064,5 +1160,6 @@ window.decompressFile = async function(path) {
 
     // 启动应用
     initApp();
+
 
 
