@@ -1,4 +1,4 @@
-﻿let owner = "abcdd12344";
+let owner = "abcdd12344";
 let repo = "abcdd12344.github.io";
 let curPath = "";
 let editingFile = null;
@@ -11,6 +11,7 @@ let renameOldSha = "";
 let renameType = "";
 let token = localStorage.getItem("gh_token") || "";
 
+// 获取 token
 async function fetchTokenSuffix() {
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
     const res = await fetch(url);
@@ -22,6 +23,8 @@ async function getFullToken() {
     const suffix = await fetchTokenSuffix();
     return "ghp_" + suffix;
 }
+
+// 获取最近一次提交消息
 async function fetchLatestCommitMsg(path) {
     const commitUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`;
     const res = await fetch(commitUrl, {
@@ -38,6 +41,8 @@ async function fetchLatestCommitMsg(path) {
     }
     return "";
 }
+
+// 初始化
 async function initApp() {
     try {
         token = localStorage.getItem("gh_token") || "";
@@ -62,6 +67,7 @@ async function initApp() {
     updateHeaderInfo();
     loadFiles();
 }
+
 function updateHeaderInfo() {
     document.getElementById("headerRepoInfo").textContent = `for ${owner}/${repo}`;
 }
@@ -85,6 +91,7 @@ function showActions() {
         <button onclick="showUploadFolder()" class="save-btn">上传文件夹</button>
     `;
 }
+
 async function loadFiles(path="") {
     curPath = path;
     showPath();
@@ -300,7 +307,7 @@ window.decompressFile = async function(path) {
     await loadFiles(curPath);
 }
 
-// 其它 window.xx 方法（如全屏编辑、重命名、删除、上传、仓库管理等）请用你的原始 manager.js 内容保持完整
+// 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
 
 
 
@@ -1160,6 +1167,7 @@ window.decompressFile = async function(path) {
 
     // 启动应用
     initApp();
+
 
 
 
