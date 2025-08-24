@@ -1,5 +1,4 @@
-﻿    <script>
-    let owner = "abcdd12344";  // 将在初始化时更新为当前用户
+﻿    let owner = "abcdd12344";  // 将在初始化时更新为当前用户
     let repo = "abcdd12344.github.io";
     let curPath = "";
     let editingFile = null;
@@ -843,5 +842,5 @@
 
     // 启动应用
     initApp();
-    </script>
+
 
