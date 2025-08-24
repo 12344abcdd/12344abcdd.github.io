@@ -19,7 +19,7 @@
             <thead>
                 <tr>
                     <th>类型</th>
-                    <th>文件/目录名</th>
+                    <th class="file-name">文件/目录名</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -29,7 +29,7 @@
         <input type="file" id="ghUploadInput" style="display:none;" />
         <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
     </div>
-        <!-- 全屏预览弹窗 -->
+    <!-- 全屏预览弹窗 -->
     <div class="gh-fullscreen-bg" id="ghFullBg">
         <div class="gh-fullscreen" id="ghFullScreen">
             <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
@@ -37,7 +37,6 @@
             <div id="ghFullContent"></div>
         </div>
     </div>
-
     <!-- 重命名弹窗 -->
     <div class="gh-rename-bg" id="ghRenameBg">
         <div class="gh-rename-modal" id="ghRenameModal">
@@ -50,7 +49,6 @@
             </div>
         </div>
     </div>
-
     <!-- 仓库列表弹窗 -->
     <div class="gh-fullscreen-bg" id="ghRepoBg" style="z-index:10001;">
         <div class="gh-fullscreen">
@@ -65,7 +63,6 @@
             </div>
         </div>
     </div>
-
     <!-- 仓库设置模态框 -->
     <div class="gh-fullscreen-bg" id="ghSettingsBg" style="z-index:10002;">
         <div class="gh-settings-modal">

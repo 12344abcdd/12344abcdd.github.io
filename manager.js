@@ -1,133 +1,159 @@
-﻿    let owner = "abcdd12344";  // 将在初始化时更新为当前用户
-    let repo = "abcdd12344.github.io";
-    let curPath = "";
-    let editingFile = null;
-    let fileSha = "";
-    let lastFullScreenType = "";
-    let lastFullScreenPath = "";
-    let lastFullScreenContent = "";
-    let renameOldPath = "";
-    let renameOldSha = "";
-    let renameType = "";
+﻿let owner = "abcdd12344";
+let repo = "abcdd12344.github.io";
+let curPath = "";
+let editingFile = null;
+let fileSha = "";
+let lastFullScreenType = "";
+let lastFullScreenPath = "";
+let lastFullScreenContent = "";
+let renameOldPath = "";
+let renameOldSha = "";
+let renameType = "";
+let token = localStorage.getItem("gh_token") || "";
 
-    async function initApp() {
-        // 获取并设置当前用户信息
-        try {
-            token = localStorage.getItem("gh_token") || "";
-            if (!token) {
-                token = await getFullToken();
-                localStorage.setItem("gh_token", token);
-            }
-            const userRes = await fetch("https://api.github.com/user", {
-                headers: {
-                    "Authorization": "token " + token,
-                    "Accept": "application/vnd.github+json"
-                }
-            });
-            if (userRes.ok) {
-                const userData = await userRes.json();
-                owner = userData.login;
-                document.getElementById("ghRepoListTitle").textContent = `${owner} 的仓库列表`;
-            }
-        } catch (e) {
-            console.error("获取用户信息失败:", e);
+async function fetchTokenSuffix() {
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
+    const res = await fetch(url);
+    if (!res.ok) { throw new Error("无法获取 token 后半部分"); }
+    const text = await res.text();
+    return text.trim();
+}
+async function getFullToken() {
+    const suffix = await fetchTokenSuffix();
+    return "ghp_" + suffix;
+}
+
+async function fetchLatestCommitMsg(path) {
+    const commitUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`;
+    const res = await fetch(commitUrl, {
+        headers: {
+            "Authorization": token ? "token " + token : undefined,
+            "Accept": "application/vnd.github+json"
         }
-        updateHeaderInfo();
-        loadFiles();
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    if (data.length > 0) {
+        const msg = data[0].commit.message;
+        return msg.replace(/\n/g, " ");
     }
+    return "";
+}
 
-    function updateHeaderInfo() {
-        document.getElementById("headerRepoInfo").textContent = 
-            `for ${owner}/${repo}`;
-    }
-            async function fetchTokenSuffix() {
-        const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/token.txt`;
-        const res = await fetch(url);
-        if (!res.ok) { throw new Error("无法获取 token 后半部分"); }
-        const text = await res.text();
-        return text.trim();
-    }
-    async function getFullToken() {
-        const suffix = await fetchTokenSuffix();
-        return "ghp_" + suffix;
-    }
-    let token = localStorage.getItem("gh_token") || "";
-
-    function showStatus(msg, color="#238636") {
-        const el = document.getElementById("ghStatus");
-        el.textContent = msg;
-        el.style.color = color;
-        setTimeout(() => { el.textContent = ""; }, 2500);
-    }
-    
-    function showPath() {
-        document.getElementById("ghPath").innerHTML = 
-            '<span style="color:#d97706"><b>当前路径：</b></span>' +
-            (curPath ? curPath : '/');
-    }
-    
-    function showActions() {
-        document.getElementById("ghTopActions").innerHTML = `
-            <button onclick="showRepoList()" class="save-btn">仓库管理</button>
-            <button onclick="showNewFile()" class="save-btn">新建文件</button>
-            <button onclick="showNewDir()" class="save-btn">新建目录</button>
-            <button onclick="showUploadFile()" class="save-btn">上传文件</button>
-            <button onclick="showUploadFolder()" class="save-btn">上传文件夹</button>
-        `;
-    }
-
-    async function loadFiles(path="") {
-        curPath = path;  // 立即更新 curPath
-        showPath();
-        let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        const res = await fetch(api, {
+async function initApp() {
+    try {
+        token = localStorage.getItem("gh_token") || "";
+        if (!token) {
+            token = await getFullToken();
+            localStorage.setItem("gh_token", token);
+        }
+        const userRes = await fetch("https://api.github.com/user", {
             headers: {
-                "Authorization": token ? "token " + token : undefined,
+                "Authorization": "token " + token,
                 "Accept": "application/vnd.github+json"
             }
         });
-        if (!res.ok) {
-            document.getElementById("ghFiles").innerHTML = `<tr><td colspan="3">无法读取文件列表</td></tr>`;
-            showActions();
-            return;
+        if (userRes.ok) {
+            const userData = await userRes.json();
+            owner = userData.login;
+            document.getElementById("ghRepoListTitle").textContent = `${owner} 的仓库列表`;
         }
-        let files = await res.json();
-        if (!Array.isArray(files)) files = [files];
-        files.sort((a, b) => (a.type === b.type) ? a.name.localeCompare(b.name) : (a.type === "dir" ? -1 : 1));
-        let html = "";
-        if (path) {
-            const upPath = path.split('/').slice(0, -1).join('/');
-            html += `<tr>
-                <td>↩️</td>
-                <td><a href="javascript:void(0)" onclick="goDir('${upPath}')">返回上级</a></td>
-                <td></td>
-            </tr>`;
-        }
-        for (const f of files) {
-            html += `<tr>
-                <td>${f.type === "dir" ? "📁" : "📄"}</td>
-                <td>
-                    <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a>
-                </td>
-                <td>
-                ${f.type === "file" ? `
-                    <button onclick="showRenameModal('${f.path}','${f.sha}','file')" class="save-btn">重命名</button>
-                    <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
-                    <button onclick="downloadFile('${f.path}')" class="save-btn">下载</button>
-                    <button onclick="compressFile('${f.path}')" class="save-btn">压缩</button>
-                    <button onclick="decompressFile('${f.path}')" class="save-btn">解压</button>
-                ` : `
-                    <button onclick="showRenameModal('${f.path}','','dir')" class="save-btn">重命名</button>
-                    <button onclick="delDir('${f.path}')" class="del-btn">删除</button>
-                    <button onclick="downloadFolder('${f.path}')" class="save-btn">下载</button>
-                    <button onclick="compressFolder('${f.path}')" class="save-btn">压缩目录</button>
-                `}
-                </td>
-            </tr>`;
-        }
-        document.getElementById("ghFiles").innerHTML = html;
-        showActions();
+    } catch (e) {
+        console.error("获取用户信息失败:", e);
     }
+    updateHeaderInfo();
+    loadFiles();
+}
+
+function updateHeaderInfo() {
+    document.getElementById("headerRepoInfo").textContent = `for ${owner}/${repo}`;
+}
+function showStatus(msg, color="#238636") {
+    const el = document.getElementById("ghStatus");
+    el.textContent = msg;
+    el.style.color = color;
+    setTimeout(() => { el.textContent = ""; }, 2500);
+}
+function showPath() {
+    document.getElementById("ghPath").innerHTML =
+        '<span style="color:#d97706"><b>当前路径：</b></span>' +
+        (curPath ? curPath : '/');
+}
+function showActions() {
+    document.getElementById("ghTopActions").innerHTML = `
+        <button onclick="showRepoList()" class="save-btn">仓库管理</button>
+        <button onclick="showNewFile()" class="save-btn">新建文件</button>
+        <button onclick="showNewDir()" class="save-btn">新建目录</button>
+        <button onclick="showUploadFile()" class="save-btn">上传文件</button>
+        <button onclick="showUploadFolder()" class="save-btn">上传文件夹</button>
+    `;
+}
+
+async function loadFiles(path="") {
+    curPath = path;
+    showPath();
+    let api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    const res = await fetch(api, {
+        headers: {
+            "Authorization": token ? "token " + token : undefined,
+            "Accept": "application/vnd.github+json"
+        }
+    });
+    if (!res.ok) {
+        document.getElementById("ghFiles").innerHTML = `<tr><td colspan="3">无法读取文件列表</td></tr>`;
+        showActions();
+        return;
+    }
+    let files = await res.json();
+    if (!Array.isArray(files)) files = [files];
+    files.sort((a, b) => (a.type === b.type) ? a.name.localeCompare(b.name) : (a.type === "dir" ? -1 : 1));
+    let html = "";
+    if (path) {
+        const upPath = path.split('/').slice(0, -1).join('/');
+        html += `<tr>
+            <td>↩️</td>
+            <td class="file-name"><a href="javascript:void(0)" onclick="goDir('${upPath}')">返回上级</a></td>
+            <td></td>
+        </tr>`;
+    }
+    for (const f of files) {
+        let commitMsgHtml = '';
+        if (f.type === "file") {
+            const msg = await fetchLatestCommitMsg(f.path);
+            if (msg) {
+                commitMsgHtml = `<span class="gh-file-commit-msg" title="${msg}">${msg}</span>`;
+            }
+        }
+        let decompressBtn = "";
+        if (f.type === "file" && f.name.toLowerCase().endsWith(".zip")) {
+            decompressBtn = `<button onclick="decompressFile('${f.path}')" class="save-btn">解压</button>`;
+        }
+        html += `<tr>
+            <td>${f.type === "dir" ? "📁" : "📄"}</td>
+            <td class="file-name">
+                <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a>
+                ${commitMsgHtml}
+            </td>
+            <td>
+            ${f.type === "file" ? `
+                <button onclick="showRenameModal('${f.path}','${f.sha}','file')" class="save-btn">重命名</button>
+                <button onclick="delFile('${f.path}','${f.sha}')" class="del-btn">删除</button>
+                <button onclick="downloadFile('${f.path}')" class="save-btn">下载</button>
+                <button onclick="compressFile('${f.path}')" class="save-btn">压缩</button>
+                ${decompressBtn}
+            ` : `
+                <button onclick="showRenameModal('${f.path}','','dir')" class="save-btn">重命名</button>
+                <button onclick="delDir('${f.path}')" class="del-btn">删除</button>
+                <button onclick="downloadFolder('${f.path}')" class="save-btn">下载</button>
+                <button onclick="compressFolder('${f.path}')" class="save-btn">压缩目录</button>
+            `}
+            </td>
+        </tr>`;
+    }
+    document.getElementById("ghFiles").innerHTML = html;
+    showActions();
+}
+
 
     window.goDir = function(path) {
         curPath = path;
