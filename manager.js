@@ -205,7 +205,6 @@ window.compressFile = async function(path) {
 // 压缩整个目录并上传 zip 到仓库
 window.compressFolder = async function(path) {
     showStatus("正在打包目录...", "#0969da");
-    // 递归读取所有文件
     async function addToZip(zip, dirPath, relPathPrefix) {
         const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dirPath}`;
         const res = await fetch(api, {
@@ -259,7 +258,6 @@ window.compressFolder = async function(path) {
     }
 };
 
-
 // 解压 zip 文件并上传到仓库
 window.decompressFile = async function(path) {
     const ext = path.split('.').pop().toLowerCase();
@@ -306,6 +304,7 @@ window.decompressFile = async function(path) {
     showStatus(`解压完成: ${uploadCount} 文件, 失败: ${failCount}`);
     await loadFiles(curPath);
 }
+
 
 // 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
 
@@ -1167,6 +1166,7 @@ window.decompressFile = async function(path) {
 
     // 启动应用
     initApp();
+
 
 
 
