@@ -1075,97 +1075,10 @@ window.decompressFile = async function(path) {
         }
     }
 
-    // 压缩/解压功能（需引入 JSZip）
-    window.compressFile = async function(path) {
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        const res = await fetch(url, {
-            headers: {
-                "Authorization": token ? "token " + token : undefined,
-                "Accept": "application/vnd.github+json"
-            }
-        });
-        if (!res.ok) return showStatus("读取文件失败","#cf222e");
-        const data = await res.json();
-        const fileName = getFileName(path);
-        const content = atob(data.content.replace(/\n/g, ""));
-        const zip = new JSZip();
-        zip.file(fileName, content);
-        const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName + ".zip";
-        a.click();
-        showStatus("压缩下载完成");
-    };
-    window.compressFolder = async function(path) {
-        showStatus("正在打包目录...", "#0969da");
-        // 递归读取所有文件
-        async function addToZip(zip, dirPath) {
-            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dirPath}`;
-            const res = await fetch(api, {
-                headers: {
-                    "Authorization": token ? "token " + token : undefined,
-                    "Accept": "application/vnd.github+json"
-                }
-            });
-            if (!res.ok) return;
-            let items = await res.json();
-            if (!Array.isArray(items)) items = [items];
-            for (const item of items) {
-                if (item.type === "dir") {
-                    const folder = zip.folder(getFileName(item.path));
-                    await addToZip(folder, item.path);
-                } else {
-                    const fileRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
-                        headers: {
-                            "Authorization": token ? "token " + token : undefined,
-                            "Accept": "application/vnd.github+json"
-                        }
-                    });
-                    if (!fileRes.ok) continue;
-                    const fileData = await fileRes.json();
-                    const content = atob(fileData.content.replace(/\n/g, ""));
-                    zip.file(getFileName(item.path), content);
-                }
-            }
-        }
-        const zip = new JSZip();
-        await addToZip(zip, path);
-        const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = getFileName(path) + ".zip";
-        a.click();
-        showStatus("目录压缩下载完成");
-    };
-    window.decompressFile = async function(path) {
-        // 仅支持 zip 文件解压下载，不写回仓库
-        const ext = path.split('.').pop().toLowerCase();
-        if (ext !== "zip") return showStatus("只支持 zip 文件解压","#cf222e");
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        const res = await fetch(url, {
-            headers: {
-                "Authorization": token ? "token " + token : undefined,
-                "Accept": "application/vnd.github+json"
-            }
-        });
-        if (!res.ok) return showStatus("读取文件失败","#cf222e");
-        const data = await res.json();
-        const content = atob(data.content.replace(/\n/g, ""));
-        const zip = new JSZip();
-        await zip.loadAsync(content);
-        zip.forEach(async function(relPath, file) {
-            const blob = await file.async("blob");
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = relPath;
-            a.click();
-        });
-        showStatus("解压完成（自动下载）");
-    };
 
     // 启动应用
     initApp();
+
 
 
 
