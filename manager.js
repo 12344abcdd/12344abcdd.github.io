@@ -163,6 +163,7 @@ async function loadFiles(path="") {
     showActions();
 }
 
+
 // 压缩单个文件并上传 zip 到仓库
 window.compressFile = async function(path) {
     showStatus("正在压缩文件...", "#0969da");
@@ -304,6 +305,7 @@ window.decompressFile = async function(path) {
     showStatus(`解压完成: ${uploadCount} 文件, 失败: ${failCount}`);
     await loadFiles(curPath);
 }
+
 
 
 // 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
@@ -1078,6 +1080,7 @@ window.decompressFile = async function(path) {
 
     // 启动应用
     initApp();
+
 
 
 
