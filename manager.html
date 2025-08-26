@@ -73,6 +73,18 @@
             </div>
         </div>
     </div>
+    <!-- 解压进度弹窗 -->
+<div class="gh-unzip-bg" id="ghUnzipBg" style="display:none;">
+    <div class="gh-unzip-modal">
+        <div class="gh-unzip-title">正在解压文件...</div>
+        <div class="gh-unzip-progress">
+            <progress id="ghUnzipProgressBar" value="0" max="100" style="width:80%;height:20px"></progress>
+            <span id="ghUnzipPercent"></span>
+        </div>
+        <div id="ghUnzipStatus" style="margin:12px 0;color:#0969da;"></div>
+        <button onclick="closeUnzipModal()" class="del-btn" style="margin-top:8px;">关闭弹窗</button>
+    </div>
+</div>
 <script src="manager.js"></script>
 </body>
 </html>
