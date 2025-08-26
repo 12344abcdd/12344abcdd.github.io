@@ -293,6 +293,41 @@ input[type="text"] {
     display: inline-block;
     vertical-align: middle;
 }
+.gh-unzip-bg {
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(36,41,46,0.22);
+    z-index: 10003;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gh-unzip-modal {
+    background: #fff;
+    box-shadow: 0 4px 32px #24292e66;
+    border-radius: 11px;
+    min-width: 240px;
+    max-width: 90vw;
+    min-height: 58px;
+    padding: 28px 28px 18px 28px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.gh-unzip-title {
+    font-size: 1.08em;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #57606a;
+}
+.gh-unzip-progress {
+    width: 100%;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
 @media (max-width: 600px) {
     .container { padding: 10px !important; }
     .gh-header { padding: 10px; font-size: 1.15em; }
