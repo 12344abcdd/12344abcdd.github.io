@@ -260,9 +260,35 @@ window.compressFolder = async function(path) {
 };
 
 // 解压 zip 文件并上传到仓库
+let unzipProgress = {
+    total: 0,
+    current: 0,
+    isRunning: false,
+    lastPath: "",
+    lastRelPaths: []
+};
+
 window.decompressFile = async function(path) {
     const ext = path.split('.').pop().toLowerCase();
     if (ext !== "zip") return showStatus("只支持 zip 文件解压","#cf222e");
+
+    // 弹出进度窗
+    unzipProgress.isRunning = true;
+    unzipProgress.lastPath = path;
+    document.getElementById("ghUnzipBg").style.display = "flex";
+    document.getElementById("ghUnzipStatus").textContent = "正在初始化...";
+    document.getElementById("ghUnzipProgressBar").value = 0;
+    document.getElementById("ghUnzipPercent").textContent = "";
+
+    // 解压按钮变成“解压中”
+    const decompressBtns = document.querySelectorAll(`button[onclick="decompressFile('${path}')"]`);
+    decompressBtns.forEach(btn => {
+        btn.textContent = "解压中...";
+        btn.disabled = true;
+        btn.classList.add("del-btn");
+        btn.classList.remove("save-btn");
+    });
+
     showStatus("正在解压并上传...", "#0969da");
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
     const res = await fetch(url, {
@@ -271,47 +297,182 @@ window.decompressFile = async function(path) {
             "Accept": "application/vnd.github+json"
         }
     });
-    if (!res.ok) return showStatus("读取文件失败","#cf222e");
+    if (!res.ok) {
+        document.getElementById("ghUnzipStatus").textContent = "读取文件失败";
+        decompressBtns.forEach(btn => {
+            btn.textContent = "解压";
+            btn.disabled = false;
+            btn.classList.remove("del-btn");
+            btn.classList.add("save-btn");
+        });
+        return showStatus("读取文件失败","#cf222e");
+    }
     const data = await res.json();
     const content = atob(data.content.replace(/\n/g, ""));
     const zip = new JSZip();
     await zip.loadAsync(content);
 
-    let uploadCount = 0, failCount = 0;
-    let decompressPath = curPath;
-    const promises = [];
+    // 统计文件数
+    let relPaths = [];
     zip.forEach(function(relPath, file) {
-        if (!file.dir) {
-            promises.push(file.async("base64").then(async function(fileContent) {
-                let targetPath = decompressPath ? decompressPath + "/" + relPath : relPath;
-                const uploadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${targetPath}`;
-                const uploadRes = await fetch(uploadUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": "token " + token,
-                        "Accept": "application/vnd.github+json"
-                    },
-                    body: JSON.stringify({
-                        message: `解压 ${path} 自动上传 ${relPath} via manager.html`,
-                        content: fileContent
-                    })
-                });
-                if (uploadRes.ok) uploadCount++;
-                else failCount++;
-            }));
-        }
+        if (!file.dir) relPaths.push(relPath);
     });
-    await Promise.all(promises);
-    showStatus(`解压完成: ${uploadCount} 文件, 失败: ${failCount}`);
-    await loadFiles(curPath);
-}
+    unzipProgress.total = relPaths.length;
+    unzipProgress.current = 0;
+    unzipProgress.lastRelPaths = relPaths;
 
+    document.getElementById("ghUnzipStatus").textContent = `正在解压上传文件（共${unzipProgress.total}个）...`;
+    document.getElementById("ghUnzipProgressBar").max = unzipProgress.total;
+    document.getElementById("ghUnzipProgressBar").value = 0;
+    document.getElementById("ghUnzipPercent").textContent = "0%";
+
+    let decompressPath = curPath;
+    let uploadCount = 0, failCount = 0;
+
+    for (let i = 0; i < relPaths.length; i++) {
+        const relPath = relPaths[i];
+        const file = zip.file(relPath);
+        let fileContent = await file.async("base64");
+        let targetPath = decompressPath ? decompressPath + "/" + relPath : relPath;
+        const uploadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${targetPath}`;
+        const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `解压 ${path} 自动上传 ${relPath} via manager.html`,
+                content: fileContent
+            })
+        });
+        if (uploadRes.ok) uploadCount++;
+        else failCount++;
+        unzipProgress.current = i + 1;
+        document.getElementById("ghUnzipProgressBar").value = unzipProgress.current;
+        let percent = Math.round(unzipProgress.current / unzipProgress.total * 100);
+        document.getElementById("ghUnzipPercent").textContent = percent + "%";
+        document.getElementById("ghUnzipStatus").textContent = `正在解压上传文件：${unzipProgress.current} / ${unzipProgress.total}`;
+    }
+
+    unzipProgress.isRunning = false;
+    document.getElementById("ghUnzipStatus").textContent = `解压完成: ${uploadCount} 文件, 失败: ${failCount}`;
+    decompressBtns.forEach(btn => {
+        btn.textContent = "解压";
+        btn.disabled = false;
+        btn.classList.remove("del-btn");
+        btn.classList.add("save-btn");
+    });
+    await loadFiles(curPath);
+};
+
+// 关闭弹窗
+window.closeUnzipModal = function() {
+    document.getElementById("ghUnzipBg").style.display = "none";
+};
+
+// “解压中...”按钮点击恢复弹窗
+window.showUnzipModal = function(path) {
+    if (unzipProgress.isRunning && unzipProgress.lastPath === path) {
+        document.getElementById("ghUnzipBg").style.display = "flex";
+    }
+};
 
 
 // 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
+let clipboard = { type: "", path: "", repo: "", owner: "" };
 
+// 复制按钮事件
+window.copyItem = function(path, type) {
+    clipboard.type = type;
+    clipboard.path = path;
+    clipboard.repo = repo;
+    clipboard.owner = owner;
+    showStatus(`已复制${type === "dir" ? "目录" : "文件"}: ${path}（${repo}）`);
+};
 
+// 粘贴按钮事件
+window.pasteItem = async function(targetRepo, targetOwner, targetDir) {
+    if (!clipboard.path) return showStatus("请先复制文件或目录", "#cf222e");
+    if (clipboard.type === "file") {
+        // 获取源文件内容
+        const url = `https://api.github.com/repos/${clipboard.owner}/${clipboard.repo}/contents/${clipboard.path}`;
+        const res = await fetch(url, {
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+        if (!res.ok) return showStatus("读取源文件失败", "#cf222e");
+        const data = await res.json();
+        const base64Content = data.content.replace(/\n/g, "");
+        // 目标路径
+        let destPath = targetDir ? targetDir + "/" + getFileName(clipboard.path) : getFileName(clipboard.path);
+        const uploadUrl = `https://api.github.com/repos/${targetOwner}/${targetRepo}/contents/${destPath}`;
+        const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + token,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `复制文件到 ${targetRepo}:${destPath} via manager.html`,
+                content: base64Content
+            })
+        });
+        if (uploadRes.ok) showStatus("粘贴成功！");
+        else showStatus("粘贴失败","#cf222e");
+    } else if (clipboard.type === "dir") {
+        // 读取源目录全部文件，递归上传
+        async function copyDir(srcOwner, srcRepo, srcDir, dstOwner, dstRepo, dstDir) {
+            const api = `https://api.github.com/repos/${srcOwner}/${srcRepo}/contents/${srcDir}`;
+            const res = await fetch(api, {
+                headers: {
+                    "Authorization": "token " + token,
+                    "Accept": "application/vnd.github+json"
+                }
+            });
+            if (!res.ok) return;
+            let items = await res.json();
+            if (!Array.isArray(items)) items = [items];
+            for (const item of items) {
+                if (item.type === "dir") {
+                    await copyDir(srcOwner, srcRepo, item.path, dstOwner, dstRepo, dstDir + "/" + getFileName(item.path));
+                } else {
+                    const fileRes = await fetch(`https://api.github.com/repos/${srcOwner}/${srcRepo}/contents/${item.path}`, {
+                        headers: {
+                            "Authorization": "token " + token,
+                            "Accept": "application/vnd.github+json"
+                        }
+                    });
+                    if (!fileRes.ok) continue;
+                    const fileData = await fileRes.json();
+                    const base64Content = fileData.content.replace(/\n/g, "");
+                    let destPath = dstDir ? dstDir + "/" + getFileName(item.path) : getFileName(item.path);
+                    const uploadUrl = `https://api.github.com/repos/${dstOwner}/${dstRepo}/contents/${destPath}`;
+                    await fetch(uploadUrl, {
+                        method: "PUT",
+                        headers: {
+                            "Authorization": "token " + token,
+                            "Accept": "application/vnd.github+json"
+                        },
+                        body: JSON.stringify({
+                            message: `复制目录到 ${dstRepo}:${destPath} via manager.html`,
+                            content: base64Content
+                        })
+                    });
+                }
+            }
+        }
+        let destDir = targetDir ? targetDir + "/" + getFileName(clipboard.path) : getFileName(clipboard.path);
+        await copyDir(clipboard.owner, clipboard.repo, clipboard.path, targetOwner, targetRepo, destDir);
+        showStatus("目录粘贴完成！");
+    }
+    clipboard = { type: "", path: "", repo: "", owner: "" }; // 清空
+    await loadFiles(curPath);
+};
 
+//
     window.goDir = function(path) {
         curPath = path;
         editingFile = null;
@@ -1080,6 +1241,7 @@ window.decompressFile = async function(path) {
 
     // 启动应用
     initApp();
+
 
 
 
