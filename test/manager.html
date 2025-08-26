@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>GitHub 仓库管理器</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="manager.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="gh-header">
+        <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
+        仓库管理器 <span style="font-size:0.7em;color:#c9d1d9;margin-left:12px;" id="headerRepoInfo"></span>
+    </div>
+    <div class="container" style="width:100%;box-sizing:border-box;">
+        <div class="gh-top-actions" id="ghTopActions"></div>
+        <div class="gh-path" id="ghPath"></div>
+        <table class="gh-table" id="ghTable">
+            <thead>
+                <tr>
+                    <th>类型</th>
+                    <th class="file-name">文件/目录名</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="ghFiles"></tbody>
+        </table>
+        <div class="gh-status" id="ghStatus"></div>
+        <input type="file" id="ghUploadInput" style="display:none;" />
+        <input type="file" id="ghUploadFolderInput" style="display:none;" webkitdirectory directory multiple />
+    </div>
+    <!-- 全屏预览弹窗 -->
+    <div class="gh-fullscreen-bg" id="ghFullBg">
+        <div class="gh-fullscreen" id="ghFullScreen">
+            <button class="gh-fullscreen-close" onclick="closeFullScreen()" title="关闭">&times;</button>
+            <div class="gh-fullscreen-actions" id="ghFullTopActions"></div>
+            <div id="ghFullContent"></div>
+        </div>
+    </div>
+    <!-- 重命名弹窗 -->
+    <div class="gh-rename-bg" id="ghRenameBg">
+        <div class="gh-rename-modal" id="ghRenameModal">
+            <button class="gh-rename-close" onclick="closeRenameModal()" title="关闭重命名">&times;</button>
+            <div class="gh-rename-title" id="ghRenameTitle"></div>
+            <input class="gh-rename-input" id="ghRenameInput" type="text" value="">
+            <div class="gh-rename-actions">
+                <button onclick="doRenameFile()" class="save-btn">确定</button>
+                <button onclick="closeRenameModal()" class="del-btn">取消</button>
+            </div>
+        </div>
+    </div>
+    <!-- 仓库列表弹窗 -->
+    <div class="gh-fullscreen-bg" id="ghRepoBg" style="z-index:10001;">
+        <div class="gh-fullscreen">
+            <button class="gh-fullscreen-close" onclick="closeRepoList()" title="关闭">&times;</button>
+            <div class="gh-repo-list">
+                <div class="gh-fullscreen-filename" id="ghRepoListTitle"></div>
+                <div id="ghRepoList"></div>
+                <div class="gh-repo-create">
+                    <input id="newRepoName" type="text" placeholder="新仓库名" style="width:200px;">
+                    <button onclick="createRepo()" class="save-btn">创建仓库</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 仓库设置模态框 -->
+    <div class="gh-fullscreen-bg" id="ghSettingsBg" style="z-index:10002;">
+        <div class="gh-settings-modal">
+            <button class="gh-fullscreen-close" onclick="closeSettings()" title="关闭">&times;</button>
+            <div class="gh-settings-section">
+                <div class="gh-settings-title">仓库设置</div>
+                <div id="ghSettingsContent"></div>
+            </div>
+        </div>
+    </div>
+<script src="manager.js"></script>
+</body>
+</html>
