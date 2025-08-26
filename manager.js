@@ -380,7 +380,8 @@ window.showUnzipModal = function(path) {
 
 
 // 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
-// 剪贴板对象
+
+// 剪贴板对象（支持文件/目录跨仓库复制粘贴）
 let clipboard = { type: "", path: "", repo: "", owner: "" };
 
 // 复制按钮事件（文件或目录）
@@ -479,7 +480,6 @@ function getFileName(path) {
     const arr = path.split('/');
     return arr[arr.length-1];
 }
-
 //
     window.goDir = function(path) {
         curPath = path;
@@ -1249,6 +1249,7 @@ function getFileName(path) {
 
     // 启动应用
     initApp();
+
 
 
 
