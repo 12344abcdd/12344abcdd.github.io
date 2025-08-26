@@ -380,9 +380,10 @@ window.showUnzipModal = function(path) {
 
 
 // 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
+// 剪贴板对象
 let clipboard = { type: "", path: "", repo: "", owner: "" };
 
-// 复制按钮事件
+// 复制按钮事件（文件或目录）
 window.copyItem = function(path, type) {
     clipboard.type = type;
     clipboard.path = path;
@@ -391,11 +392,11 @@ window.copyItem = function(path, type) {
     showStatus(`已复制${type === "dir" ? "目录" : "文件"}: ${path}（${repo}）`);
 };
 
-// 粘贴按钮事件
+// 粘贴按钮事件（目标仓库、目标用户、目标目录）
 window.pasteItem = async function(targetRepo, targetOwner, targetDir) {
     if (!clipboard.path) return showStatus("请先复制文件或目录", "#cf222e");
     if (clipboard.type === "file") {
-        // 获取源文件内容
+        // 读取源文件
         const url = `https://api.github.com/repos/${clipboard.owner}/${clipboard.repo}/contents/${clipboard.path}`;
         const res = await fetch(url, {
             headers: {
@@ -423,7 +424,8 @@ window.pasteItem = async function(targetRepo, targetOwner, targetDir) {
         if (uploadRes.ok) showStatus("粘贴成功！");
         else showStatus("粘贴失败","#cf222e");
     } else if (clipboard.type === "dir") {
-        // 读取源目录全部文件，递归上传
+        showStatus("正在复制目录（请等待）...", "#0969da");
+        // 递归复制目录
         async function copyDir(srcOwner, srcRepo, srcDir, dstOwner, dstRepo, dstDir) {
             const api = `https://api.github.com/repos/${srcOwner}/${srcRepo}/contents/${srcDir}`;
             const res = await fetch(api, {
@@ -471,6 +473,12 @@ window.pasteItem = async function(targetRepo, targetOwner, targetDir) {
     clipboard = { type: "", path: "", repo: "", owner: "" }; // 清空
     await loadFiles(curPath);
 };
+
+// 工具函数：获取文件名
+function getFileName(path) {
+    const arr = path.split('/');
+    return arr[arr.length-1];
+}
 
 //
     window.goDir = function(path) {
@@ -1241,6 +1249,7 @@ window.pasteItem = async function(targetRepo, targetOwner, targetDir) {
 
     // 启动应用
     initApp();
+
 
 
 
