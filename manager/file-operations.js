@@ -1,10 +1,5 @@
-// 文件操作相关（适配 manager.js 结构）
-// 建议放在 js/file-operations.js，然后在 manager.js 通过 import { ... } from './js/file-operations.js' 使用
-
-// 依赖 core.js 提供的 owner, repo, token, showStatus, getFileName, getParentPath, getFullToken
-// 依赖 ui-handlers.js 提供的 showPath, showActions
-
-// 请根据你的项目实际路径调整 import 路径
+// 文件操作模块（含重命名、下载等功能）
+// 适配 manager.js 的结构，需配合 core.js 和 ui-handlers.js
 import { owner, repo, token, getFullToken, showStatus, getFileName, getParentPath } from './core.js';
 import { showPath, showActions } from './ui-handlers.js';
 
@@ -49,8 +44,6 @@ export async function loadFiles(path="") {
         </tr>`;
     }
     for (const f of files) {
-        let commitMsgHtml = '';
-        // 可加入最近提交信息展示
         let decompressBtn = "";
         if (f.type === "file" && f.name.toLowerCase().endsWith(".zip")) {
             decompressBtn = `<button onclick="decompressFile('${f.path}')" class="save-btn">解压</button>`;
@@ -65,7 +58,6 @@ export async function loadFiles(path="") {
             <td>${f.type === "dir" ? "📁" : "📄"}</td>
             <td class="file-name">
                 <a href="javascript:void(0)" onclick="${f.type === "dir" ? `goDir('${f.path}')` : `openFullScreen('${f.path}','${f.sha}')`}">${f.name}</a>
-                ${commitMsgHtml}
             </td>
             <td>
             ${f.type === "file" ? `
@@ -314,4 +306,178 @@ export async function uploadFolder(files) {
     }
     showStatus(`上传完成：${count} 个文件，失败：${failed} 个。`);
     await loadFiles(curPath);
+}
+
+// 文件重命名
+export async function renameFile(oldPath, oldSha, newName, type) {
+    if (!newName || !oldPath) return showStatus("请输入新文件名", "#cf222e");
+    if (getFileName(oldPath) === newName) return showStatus("文件名未修改", "#cf222e");
+    const newPath = getParentPath(oldPath) ? getParentPath(oldPath) + '/' + newName : newName;
+    let myToken = token;
+    if (!myToken) {
+        myToken = await getFullToken();
+        localStorage.setItem("gh_token", myToken);
+    }
+    showStatus("正在重命名...", "#0969da");
+    if (type === "dir") {
+        const api = `https://api.github.com/repos/${owner}/${repo}/contents/${oldPath}`;
+        const res = await fetch(api, {
+            headers: {
+                "Authorization": "token " + myToken,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+        if (!res.ok) return showStatus("无法获取目录内容", "#cf222e");
+        let items = await res.json();
+        if (!Array.isArray(items)) items = [items];
+        let ok = true;
+        for (const item of items) {
+            const subNewPath = newPath + "/" + getFileName(item.path);
+            let data = item;
+            if (!data.content) {
+                const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
+                    headers: {
+                        "Authorization": "token " + myToken,
+                        "Accept": "application/vnd.github+json"
+                    }
+                });
+                if (!r.ok) continue;
+                data = await r.json();
+            }
+            const base64Content = data.content ? data.content.replace(/\n/g, "") : "";
+            const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${subNewPath}`;
+            const createRes = await fetch(createUrl, {
+                method: "PUT",
+                headers: {
+                    "Authorization": "token " + myToken,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Rename (move) ${subNewPath} from ${item.path} via manager.html`,
+                    content: base64Content
+                })
+            });
+            if (!createRes.ok) { ok = false; break; }
+            const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`;
+            await fetch(deleteUrl, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "token " + myToken,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Delete ${item.path} after renaming to ${subNewPath} via manager.html`,
+                    sha: item.sha
+                })
+            });
+        }
+        if (ok) {
+            showStatus("目录重命名成功！");
+            await loadFiles(curPath);
+        } else {
+            showStatus("目录重命名失败", "#cf222e");
+        }
+    } else {
+        let base64Content = null;
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${oldPath}`;
+        const res = await fetch(url, {
+            headers: {
+                "Authorization": "token " + myToken,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+        if (!res.ok) {
+            showStatus("获取原文件内容失败", "#cf222e");
+            return;
+        }
+        const data = await res.json();
+        base64Content = data.content.replace(/\n/g, "");
+        const createUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${newPath}`;
+        const createRes = await fetch(createUrl, {
+            method: "PUT",
+            headers: {
+                "Authorization": "token " + myToken,
+                "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({
+                message: `Rename (create) ${newPath} from ${oldPath} via manager.html`,
+                content: base64Content
+            })
+        });
+        if (createRes.ok) {
+            const deleteUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${oldPath}`;
+            await fetch(deleteUrl, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "token " + myToken,
+                    "Accept": "application/vnd.github+json"
+                },
+                body: JSON.stringify({
+                    message: `Rename (delete) ${oldPath} after renaming to ${newPath} via manager.html`,
+                    sha: oldSha
+                })
+            });
+            showStatus("重命名成功！");
+            await loadFiles(curPath);
+        } else {
+            showStatus("重命名失败", "#cf222e");
+        }
+    }
+}
+
+// 文件下载
+export async function downloadFile(path) {
+    // 直接跳转 raw.githubusercontent.com
+    const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+    const a = document.createElement('a');
+    a.href = rawUrl;
+    a.download = getFileName(path);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+// 目录下载（打包为 zip）
+export async function downloadFolder(path) {
+    showStatus("正在打包目录...", "#0969da");
+    const JSZip = window.JSZip;
+    async function addToZip(zip, dirPath, relPathPrefix) {
+        const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dirPath}`;
+        const res = await fetch(api, {
+            headers: {
+                "Authorization": token ? "token " + token : undefined,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+        if (!res.ok) return;
+        let items = await res.json();
+        if (!Array.isArray(items)) items = [items];
+        for (const item of items) {
+            if (item.type === "dir") {
+                await addToZip(zip, item.path, relPathPrefix + item.name + "/");
+            } else {
+                const fileRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${item.path}`, {
+                    headers: {
+                        "Authorization": token ? "token " + token : undefined,
+                        "Accept": "application/vnd.github+json"
+                    }
+                });
+                if (!fileRes.ok) continue;
+                const fileData = await fileRes.json();
+                const content = atob(fileData.content.replace(/\n/g, ""));
+                zip.file(relPathPrefix + item.name, content);
+            }
+        }
+    }
+    const zip = new JSZip();
+    await addToZip(zip, path, "");
+    const zipBlob = await zip.generateAsync({type:"blob"});
+    const folderName = path.split('/').pop();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = folderName + ".zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showStatus("目录打包下载完成！");
 }
