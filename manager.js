@@ -1,5 +1,5 @@
-let owner = "abcdd12344";
-let repo = "abcdd12344.github.io";
+let owner = "12344abcdd";
+let repo = owner+".github.io";
 let curPath = "";
 let editingFile = null;
 let fileSha = "";
@@ -1249,6 +1249,7 @@ function getFileName(path) {
 
     // 启动应用
     initApp();
+
 
 
 
