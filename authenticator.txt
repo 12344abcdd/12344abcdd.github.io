@@ -1,0 +1,1 @@
+otpauth://totp/GitHub:12344abcdd?secret=2SKTXDDS752EZUOU&issuer=GitHub
