@@ -142,3 +142,185 @@
     }
 ]
 ```
+```json
+[
+    {
+        "domain": ".alipan.com",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "_samesite_flag_",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "true"
+    },
+    {
+        "domain": ".alipan.com",
+        "expirationDate": 1809270167.186749,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "cna",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "KNdOIu4e0mMCATpl1Or0KGV8"
+    },
+    {
+        "domain": ".alipan.com",
+        "expirationDate": 1790262196,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "tfstk",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "g_GiLQDDf5XBVXIeZiP6pzS--0JLB5NbmmCYDSE2LkrCXGCtuSYmXq8_Hq-smjqE4r3TkFihoDonBm0X5rrq0mqxBpd-5VNbg3nDwQ36KsU_PfVVD2P_kPMFoxA-5V_FSi8-LQdcVML87oo4QJ5UWkza7ooV8MrQlrSau18n8kZF_PWa0MyUPzX47mP2-2rQuSrq0R8n8ka4goR5sir_blhe4kXFoI2LOX4gIuuMns5mt_eg4Vrhgal3SnZr7kfVgu7duJurmhf77j4iZ5h2yB3UYAl46f-di0mnUWcLLZ-07AuoN8G2xg-hLTzfEsZJtqBfhRzQ-uFXyA9izCF8KeYhUNwaRylp-eXfhRzQ-uLH-T7_QyaE9"
+    },
+    {
+        "domain": ".alipan.com",
+        "expirationDate": 1790262196,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "isg",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "BIaGf7cuE1YhLccySShxM-iE134I58qhIp6GM3CvcqmEcyaN2HcasWwRTekZC8K5"
+    },
+    {
+        "domain": "www.alipan.com",
+        "expirationDate": 1774717390,
+        "hostOnly": true,
+        "httpOnly": false,
+        "name": "ADRIVE_UID",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "eyJ1aWQiOiJhNGZiZjE4MTcxNmU0OTE3YmRkYThlNzQ2YjQxY2E1OCJ9"
+    },
+    {
+        "domain": "www.alipan.com",
+        "expirationDate": 1790262166.610903,
+        "hostOnly": true,
+        "httpOnly": false,
+        "name": "_bl_uid",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "b7mqCndCab8g9zmdd0Uvknh2t7m7"
+    },
+    {
+        "domain": "www.alipan.com",
+        "expirationDate": 1790262194.575832,
+        "hostOnly": true,
+        "httpOnly": false,
+        "name": "__itrace_wid",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "751d3b25-d6e4-4f8c-8b22-260d9fbcee00"
+    },
+    {
+        "domain": ".alipan.com",
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "_tb_token_",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "f7e43e3f5b8be"
+    },
+    {
+        "domain": "www.alipan.com",
+        "expirationDate": 1790262196.323349,
+        "hostOnly": true,
+        "httpOnly": false,
+        "name": "arms_uid",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "ec53a698-b668-4952-a507-c813920a773d"
+    },
+    {
+        "domain": ".alipan.com",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "cookie2",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "15a345c9578eebf555dd43e0330e6081"
+    },
+    {
+        "domain": ".alipan.com",
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "csg",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "2d83f16d"
+    },
+    {
+        "domain": ".alipan.com",
+        "expirationDate": 1774796567.067715,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "SESSIONID",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "b5374dbca7f64d15b2527c5da30cd7fa"
+    },
+    {
+        "domain": ".alipan.com",
+        "expirationDate": 1782514968.327935,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "t",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "5e78fe6878104f21ae5d35fda6674159"
+    },
+    {
+        "domain": ".alipan.com",
+        "expirationDate": 1774969369,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "xlly_s",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "1"
+    }
+]
+```
