@@ -524,7 +524,7 @@ function getFileName(path) {
         html += `
             <div class="gh-repo-actions">
                 <button onclick="showImportRepo()" class="save-btn">导入仓库</button>
-                <button onclick="showSettings()" class="save-btn">仓库设置</button>
+                <button onclick="showSettings()" class="save-btn" disabled>仓库设置</button>
             </div>
         `;
         document.getElementById("ghRepoList").innerHTML = html;
@@ -730,7 +730,7 @@ function getFileName(path) {
             lastFullScreenType = "video";
             contentHtml += `<video src="${rawUrl}" controls></video>`;
             contentHtml += `<a href="${rawUrl}" download="${getFileName(path)}" class="save-btn" style="margin:20px;">下载</a>`;
-        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","yml"].includes(ext) || ext.length <= 5) {
+        } else if (["md","txt","json","js","ts","css","html","py","java","c","cpp","go","rs","php","yaml","gradle","yml"].includes(ext) || ext.length <= 5) {
             lastFullScreenType = "text";
             contentHtml += `<textarea class="gh-fullscreen-content" id="ghFullscreenEdit"></textarea>`;
         } else {
