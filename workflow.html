@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Actions 日志查看器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+        .card {
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #161b22;
+        }
+        .form-row {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 18px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:disabled {
+            background: #2ea04366;
+            cursor: not-allowed;
+        }
+        #runList {
+            margin: 15px 0;
+        }
+        .run-item {
+            padding: 10px 12px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+        .run-item:hover {
+            background: #21262d;
+        }
+        .status-success { color: #3fb950; }
+        .status-failure { color: #f85149; }
+        .status-running { color: #58a6ff; }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #010409;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 70vh;
+            overflow: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .tip {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h2>GitHub Actions 工作流日志查看器</h2>
+    <div class="card">
+        <div class="form-row">
+            <label>GitHub Personal Token</label>
+            <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxx">
+            <div class="tip">需要 repo 权限，个人设置 -> Developer settings -> Tokens 创建</div>
+        </div>
+        <div class="form-row">
+            <label>用户名 (Owner)</label>
+            <input type="text" id="owner" placeholder="例如: octocat">
+        </div>
+        <div class="form-row">
+            <label>仓库名 (Repo)</label>
+            <input type="text" id="repo" placeholder="例如: hello-world">
+        </div>
+        <button id="fetchRunsBtn">获取工作流运行列表</button>
+    </div>
+
+    <div class="card">
+        <h3>工作流运行列表</h3>
+        <div id="runList"></div>
+    </div>
+
+    <div class="card">
+        <h3>日志内容</h3>
+        <pre id="logOutput">选择上方运行记录查看日志...</pre>
+    </div>
+
+    <script>
+        const tokenInput = document.getElementById('token');
+        const ownerInput = document.getElementById('owner');
+        const repoInput = document.getElementById('repo');
+        const fetchBtn = document.getElementById('fetchRunsBtn');
+        const runListEl = document.getElementById('runList');
+        const logOutput = document.getElementById('logOutput');
+
+        // 获取工作流运行列表
+        fetchBtn.addEventListener('click', async () => {
+            const token = tokenInput.value.trim();
+            const owner = ownerInput.value.trim();
+            const repo = repoInput.value.trim();
+
+            if (!token || !owner || !repo) {
+                alert('请填写 Token、用户名、仓库名');
+                return;
+            }
+
+            fetchBtn.disabled = true;
+            runListEl.innerHTML = '加载中...';
+            logOutput.textContent = '';
+
+            try {
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=30`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (!res.ok) throw new Error(`API错误: ${res.status}`);
+                const data = await res.json();
+                renderRunList(data.workflow_runs);
+            } catch (err) {
+                runListEl.innerHTML = `<span style="color:#f85149">获取失败: ${err.message}</span>`;
+            } finally {
+                fetchBtn.disabled = false;
+            }
+        });
+
+        // 渲染运行列表
+        function renderRunList(runs) {
+            if (runs.length === 0) {
+                runListEl.innerHTML = '该仓库暂无 Actions 运行记录';
+                return;
+            }
+            runListEl.innerHTML = '';
+            runs.forEach(run => {
+                const div = document.createElement('div');
+                div.className = 'run-item';
+                let statusClass = '';
+                if (run.conclusion === 'success') statusClass = 'status-success';
+                else if (run.conclusion === 'failure' || run.conclusion === 'cancelled') statusClass = 'status-failure';
+                else statusClass = 'status-running';
+
+                div.innerHTML = `
+                    <div><strong>ID: ${run.id}</strong>
+                    <span class="${statusClass}">[${run.status} / ${run.conclusion || '运行中'}]</span></div>
+                    <div>工作流: ${run.name}</div>
+                    <div>触发: ${run.event} | 分支: ${run.head_branch}</div>
+                `;
+                div.onclick = () => fetchRunLog(run.id);
+                runListEl.appendChild(div);
+            });
+        }
+
+        // 获取单个运行完整日志
+        async function fetchRunLog(runId) {
+            const token = tokenInput.value.trim();
+            const owner = ownerInput.value.trim();
+            const repo = repoInput.value.trim();
+            logOutput.textContent = '正在下载日志压缩包并解析...';
+
+            try {
+                // 1. 获取日志下载地址
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/logs`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (!res.ok) throw new Error(`日志获取失败 ${res.status}`);
+                const logZipUrl = res.url;
+
+                // 提示：浏览器无法直接解析zip，给出替代方案
+                logOutput.textContent = `
+当前运行ID: ${runId}
+日志下载地址：
+${logZipUrl}
+
+说明：浏览器前端无法直接解压 ZIP 日志包，两种查看方式：
+1. 复制上面链接，浏览器打开（携带你的Token授权，直接下载zip日志）
+2. 如需在线预览文本日志，可二次开发引入JSZip解压库解析
+                `.trim();
+            } catch (err) {
+                logOutput.textContent = `日志加载失败: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
