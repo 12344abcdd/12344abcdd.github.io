@@ -10,6 +10,8 @@ let renameOldPath = "";
 let renameOldSha = "";
 let renameType = "";
 let token = localStorage.getItem("gh_token") || "";
+let proxyUrl = localStorage.getItem("gh_proxy_url") || "";
+let proxyEnable = localStorage.getItem("gh_proxy_enable") === "true";
 
 // 获取 token
 async function fetchTokenSuffix() {
@@ -89,6 +91,7 @@ function showActions() {
         <button onclick="showNewDir()" class="save-btn">新建目录</button>
         <button onclick="showUploadFile()" class="save-btn">上传文件</button>
         <button onclick="showUploadFolder()" class="save-btn">上传文件夹</button>
+        <button onclick="showProxyModal()" class="save-btn">代理设置</button>
     `;
 }
 
@@ -378,7 +381,40 @@ window.showUnzipModal = function(path) {
     }
 };
 
+// 打开代理弹窗
+window.showProxyModal = function() {
+  document.getElementById("ghProxyUrl").value = proxyUrl;
+  document.getElementById("ghProxyEnable").checked = proxyEnable;
+  document.getElementById("ghProxyBg").style.display = "flex";
+};
 
+// 关闭代理弹窗
+window.closeProxyModal = function() {
+  document.getElementById("ghProxyBg").style.display = "none";
+};
+
+// 保存代理配置
+window.saveProxySetting = function() {
+  proxyUrl = document.getElementById("ghProxyUrl").value.trim();
+  proxyEnable = document.getElementById("ghProxyEnable").checked;
+  localStorage.setItem("gh_proxy_url", proxyUrl);
+  localStorage.setItem("gh_proxy_enable", proxyEnable);
+  showStatus("代理配置已保存");
+  closeProxyModal();
+};
+
+// 封装带代理的fetch
+async function fetchWithProxy(url, options = {}) {
+  if (proxyEnable && proxyUrl && (url.includes("github.com") || url.includes("raw.githubusercontent.com"))) {
+    const proxyTarget = new URL(url);
+    const proxyReqUrl = `${proxyUrl}/${proxyTarget.protocol}//${proxyTarget.host}${proxyTarget.pathname}${proxyTarget.search}`;
+    return fetch(proxyReqUrl, {
+      ...options,
+      mode: "cors"
+    });
+  }
+  return fetch(url, options);
+}
 // 其它 window.xxx 方法请用你的原始 manager.js 内容保持完整。
 
 // 剪贴板对象（支持文件/目录跨仓库复制粘贴）
