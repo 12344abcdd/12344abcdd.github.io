@@ -84,6 +84,26 @@
         <div id="ghUnzipStatus" style="margin:12px 0;color:#0969da;"></div>
         <button onclick="closeUnzipModal()" class="del-btn" style="margin-top:8px;">关闭弹窗</button>
     </div>
+
+      <!-- 6. 新增：GitHub代理设置弹窗 ghProxyBg -->
+    <div id="ghProxyBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:9999;">
+        <div style="background:#fff;padding:24px;border-radius:8px;width:420px;">
+            <h3>GitHub 网络代理设置</h3>
+            <div style="margin:12px 0;">
+                <label>
+                    <input type="checkbox" id="ghProxyEnable"> 启用代理
+                </label>
+            </div>
+            <div style="margin:12px 0;">
+                <label>代理地址（示例：http://127.0.0.1:7890）</label>
+                <input id="ghProxyUrl" style="width:100%;box-sizing:border-box;padding:8px;margin-top:6px;" placeholder="留空不使用代理">
+            </div>
+            <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeProxyModal()" class="del-btn">取消</button>
+                <button onclick="saveProxySetting()" class="save-btn">保存配置</button>
+            </div>
+        </div>
+    </div>
 </div>
 <script src="manager.js"></script>
 </body>
