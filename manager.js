@@ -66,6 +66,7 @@ async function initApp() {
     } catch (e) {
         console.error("获取用户信息失败:", e);
     }
+    showActions();
     updateHeaderInfo();
     loadFiles();
     showProxyModal(); //测试
