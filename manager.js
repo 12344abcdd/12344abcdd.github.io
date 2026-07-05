@@ -69,7 +69,6 @@ async function initApp() {
     showActions();
     updateHeaderInfo();
     loadFiles();
-    showProxyModal(); //测试
 }
 
 function updateHeaderInfo() {
